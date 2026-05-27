@@ -1,0 +1,15 @@
+.git
+.next
+node_modules
+.tmp-chrome-check
+local-*.log
+*.tsbuildinfo
+
+# Local reference/archive folders that are not needed for the web deployment
+מערכת_התפעול
+archive
+html_legacy
+
+# Local agent/tooling metadata
+.agents
+.claude
