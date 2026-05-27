@@ -1,5 +1,6 @@
 import Modal from "@/components/ui/Modal";
 import type { OpsRecord } from "@/lib/modules";
+import { decodeTemplateText } from "@/lib/template-text";
 
 export default function TemplateModal({
   template,
@@ -12,12 +13,12 @@ export default function TemplateModal({
     <Modal
       open={Boolean(template)}
       title={String(template?.title ?? "תבנית")}
-      subtitle={String(template?.subject ?? "")}
+      subtitle={decodeTemplateText(template?.subject)}
       onClose={onClose}
     >
       <div style={{
         whiteSpace: "pre-wrap",
-        lineHeight: 1.9,
+        lineHeight: 1.85,
         background: "#F8FAFC",
         border: "1px solid #DDE7F3",
         borderRadius: 14,
@@ -25,8 +26,10 @@ export default function TemplateModal({
         color: "var(--text-body)",
         textAlign: "right",
         direction: "rtl",
+        unicodeBidi: "plaintext",
+        fontSize: 15.5,
       }}>
-        {String(template?.body ?? "").replace(/\\n/g, "\n")}
+        {decodeTemplateText(template?.body)}
       </div>
     </Modal>
   );

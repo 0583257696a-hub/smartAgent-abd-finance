@@ -11,6 +11,7 @@ import { addRecord, deleteRecord, getPrivateData, updateRecord } from "@/lib/loc
 import { exportToExcel } from "@/lib/excel-export";
 import { getValue, moduleByKey, setValue, type FieldConfig, type ModuleKey, type OpsRecord } from "@/lib/modules";
 import { normalizeText, searchMatch } from "@/lib/normalize";
+import { decodeTemplateText } from "@/lib/template-text";
 import { useAppStore } from "@/store/useAppStore";
 import TemplateModal from "@/components/features/TemplateModal";
 import EmailSendModal from "@/components/features/EmailSendModal";
@@ -121,7 +122,7 @@ export default function ModulePage({ moduleKey }: { moduleKey: ModuleKey }) {
         <>
           <Action icon={<Eye size={15} />} label="פתח" onClick={() => setTemplate(row)} />
           <Action icon={<Send size={15} />} label="שלח" primary onClick={() => setSendTemplate(row)} />
-          <Action icon={<Copy size={15} />} label="העתק" onClick={() => copy(row.body)} />
+          <Action icon={<Copy size={15} />} label="העתק" onClick={() => copy(decodeTemplateText(row.body))} />
         </>
       )}
       {moduleKey !== "email_templates" && row.email && <Action icon={<Copy size={15} />} label="העתק" onClick={() => copy(row.email)} />}

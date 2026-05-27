@@ -6,6 +6,7 @@ import { loadPublicRows } from "@/lib/data";
 import { getPrivateData, getUserSetting } from "@/lib/local-storage";
 import { moduleByKey, type OpsRecord } from "@/lib/modules";
 import { searchMatch } from "@/lib/normalize";
+import { decodeTemplateText, toMailBody } from "@/lib/template-text";
 
 const userId = "local-dev";
 
@@ -50,9 +51,9 @@ export default function EmailSendModal({
 
     const fullName = `${selectedClient?.first_name ?? ""} ${selectedClient?.last_name ?? ""}`.trim();
     const nationalId = String(selectedClient?.national_id ?? "").trim();
-    const subject = [fullName, nationalId ? `ת.ז ${nationalId}` : "", template.subject].filter(Boolean).join(" ");
+    const subject = [fullName, nationalId ? `ת.ז ${nationalId}` : "", decodeTemplateText(template.subject)].filter(Boolean).join(" ");
     const signature = getUserSetting("signature", userId);
-    const body = [String(template.body ?? "").replace(/\\n/g, "\r\n"), signature].filter(Boolean).join("\r\n\r\n");
+    const body = [toMailBody(template.body), toMailBody(signature)].filter(Boolean).join("\r\n\r\n");
     const archive = getUserSetting("archive_email", userId);
     const cc = archive ? `&cc=${encodeURIComponent(archive)}` : "";
 
