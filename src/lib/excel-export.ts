@@ -1,5 +1,7 @@
 import * as XLSX from "xlsx";
-import { modules, getValue, type OpsRecord } from "@/lib/modules";
+import { loadPublicRows } from "@/lib/data";
+import { getPrivateData } from "@/lib/local-storage";
+import { modules, getValue, type ModuleConfig, type OpsRecord, type RecordValue } from "@/lib/modules";
 
 export function exportToExcel(moduleName: string, data: OpsRecord[]) {
   const config = modules.find((item) => item.key === moduleName);
@@ -25,6 +27,22 @@ export function downloadTemplate() {
   XLSX.writeFile(workbook, "insurance-ops-import-template.xlsx");
 }
 
+export async function exportBackupExcel(userId: string) {
+  const workbook = XLSX.utils.book_new();
+
+  for (const module of modules) {
+    const rows =
+      module.source === "private"
+        ? getPrivateData(module.key, userId)
+        : await loadPublicRows(module);
+
+    appendModuleSheet(workbook, module, rows);
+  }
+
+  const date = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(workbook, `insurance-ops-backup-${date}.xlsx`);
+}
+
 export function exportBackupJson(data: Record<string, OpsRecord[]>) {
   const blob = new Blob([JSON.stringify({ exported_at: new Date().toISOString(), data }, null, 2)], {
     type: "application/json;charset=utf-8",
@@ -35,4 +53,34 @@ export function exportBackupJson(data: Record<string, OpsRecord[]>) {
   link.download = "insurance-ops-backup.json";
   link.click();
   URL.revokeObjectURL(url);
+}
+
+function appendModuleSheet(workbook: XLSX.WorkBook, module: ModuleConfig, rows: OpsRecord[]) {
+  const header = module.fields.map((field) => field.label);
+  const body = rows.map((row) =>
+    module.fields.map((field) => stringifyCellValue(getExcelValue(row, field.key))),
+  );
+  const worksheet = XLSX.utils.aoa_to_sheet([header, ...body]);
+
+  XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName(module.label));
+}
+
+function getExcelValue(row: OpsRecord, key: string) {
+  const directValue = getValue(row, key);
+  if (directValue !== "" && directValue !== null && directValue !== undefined) return directValue;
+
+  if (!key.includes(".")) return row[key];
+
+  const lastSegment = key.split(".").pop();
+  return lastSegment ? row[lastSegment] : "";
+}
+
+function stringifyCellValue(value: RecordValue) {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+function safeSheetName(name: string) {
+  return name.replace(/[\\/?*\[\]:]/g, " ").slice(0, 31) || "Data";
 }

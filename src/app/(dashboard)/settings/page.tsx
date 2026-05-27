@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import ImportExcel from "@/components/features/ImportExcel";
-import { downloadTemplate, exportBackupJson } from "@/lib/excel-export";
+import { downloadTemplate, exportBackupExcel, exportBackupJson } from "@/lib/excel-export";
 import { getUserSetting, setUserSetting } from "@/lib/local-storage";
 
 const userId = "local-dev";
@@ -11,11 +11,21 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState({ full_name: "", phone: "", agency_name: "" });
   const [signature, setSignature] = useState(() => (typeof window === "undefined" ? "" : getUserSetting("signature", userId)));
   const [archiveEmail, setArchiveEmail] = useState(() => (typeof window === "undefined" ? "" : getUserSetting("archive_email", userId)));
+  const [exportingExcel, setExportingExcel] = useState(false);
 
   function saveSettings() {
     setUserSetting("signature", userId, signature);
     setUserSetting("archive_email", userId, archiveEmail);
     alert("נשמר");
+  }
+
+  async function handleExcelBackup() {
+    setExportingExcel(true);
+    try {
+      await exportBackupExcel(userId);
+    } finally {
+      setExportingExcel(false);
+    }
   }
 
   return (
@@ -40,6 +50,9 @@ export default function SettingsPage() {
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <ImportExcel />
           <button type="button" onClick={downloadTemplate} style={button}>הורד תבנית Excel</button>
+          <button type="button" onClick={handleExcelBackup} disabled={exportingExcel} style={button}>
+            {exportingExcel ? "מייצא..." : "יצא אקסל גיבוי"}
+          </button>
           <button type="button" onClick={() => exportBackupJson({})} style={button}>ייצוא גיבוי JSON</button>
         </div>
       </Section>
