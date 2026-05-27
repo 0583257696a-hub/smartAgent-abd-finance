@@ -70,19 +70,19 @@ const fieldAliases: Record<string, string[]> = {
   "discounts.year3": ["שנה ג׳", "שנה ג'", "שנה ג", "year3"],
   "discounts.year4": ["שנה ד׳", "שנה ד'", "שנה ד", "year4"],
   "discounts.year5to6": ["שנים ה׳-ו׳", "שנים ה'-ו'", "ה׳-ו׳", "year5to6"],
-  conditions: ["תנאים"],
+  conditions: ["תנאים", "conditions"],
   bank: ["בנק"],
   branch: ["סניף"],
   account: ["חשבון"],
   iban: ["IBAN"],
   hours: ["שעות", "שעות פעילות"],
-  customer_phone: ["טלפון לקוח"],
+  customer_phone: ["טלפון לקוח", "טלפון לקוחות"],
   type: ["סוג"],
   code: ["קוד"],
   agent_number: ["מספר סוכן"],
   bank_name: ["בנק", "שם בנק"],
   bank_number: ["מספר בנק"],
-  entity: ["גוף"],
+  entity: ["גוף", "גורם"],
   contact: ["איש קשר"],
 };
 
@@ -106,29 +106,34 @@ export default function ImportExcel() {
       const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
 
       for (const sheetName of workbook.SheetNames) {
-        const config = findModule(sheetName);
-        if (!config) {
-          summary.skipped += 1;
-          continue;
-        }
+        try {
+          const config = findModule(sheetName);
+          if (!config) {
+            summary.skipped += 1;
+            continue;
+          }
 
-        const rawRows = XLSX.utils.sheet_to_json<Record<string, string>>(
-          workbook.Sheets[sheetName],
-          { defval: "", raw: false },
-        );
-        const rows = rawRows.map((row) => mapExcelRow(row, config)).filter((row) => hasValues(row, config.fields));
+          const rawRows = XLSX.utils.sheet_to_json<Record<string, string>>(
+            workbook.Sheets[sheetName],
+            { defval: "", raw: false },
+          );
+          const rows = rawRows.map((row) => mapExcelRow(row, config)).filter((row) => hasValues(row, config.fields));
 
-        if (config.source === "private") {
-          const result = importPrivateRows(config, rows);
+          if (config.source === "private") {
+            const result = importPrivateRows(config, rows);
+            summary.added += result.added;
+            summary.updated += result.updated;
+            continue;
+          }
+
+          const result = await importPublicRows(config, rows);
           summary.added += result.added;
           summary.updated += result.updated;
-          continue;
+          summary.skipped += result.skipped;
+        } catch (error) {
+          console.error(`Import failed for sheet ${sheetName}`, error);
+          summary.skipped += 1;
         }
-
-        const result = await importPublicRows(config, rows);
-        summary.added += result.added;
-        summary.updated += result.updated;
-        summary.skipped += result.skipped;
       }
 
       alert(`${summary.added} נוספו, ${summary.updated} עודכנו, ${summary.skipped} דולגו`);

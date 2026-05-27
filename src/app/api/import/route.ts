@@ -63,19 +63,20 @@ export async function POST(request: Request) {
   const columns = moduleColumns[moduleKey] ?? [];
   const keys = dedupFields[moduleKey] ?? columns;
   const summary = { added: 0, updated: 0, skipped: 0 };
-  const existing = new Set<string>();
+  const existing = new Map<string, string>();
   const incoming = new Set<string>();
 
-  const existingResponse = await supabase.from(moduleKey).select(columns.join(","));
+  const existingResponse = await supabase.from(moduleKey).select(["id", ...columns].join(","));
   if (existingResponse.error) {
     return Response.json({ error: existingResponse.error.message }, { status: 500 });
   }
 
   (existingResponse.data as unknown as Record<string, string>[] | null)?.forEach((row) => {
-    existing.add(dedupeKey(row, keys));
+    existing.set(dedupeKey(row, keys), String(row.id ?? ""));
   });
 
   const rowsToInsert: Record<string, string>[] = [];
+  const rowsToUpdate: Array<{ id: string; payload: Record<string, string> }> = [];
 
   records.forEach((record) => {
     const payload = toColumnPayload(record, columns);
@@ -85,14 +86,26 @@ export async function POST(request: Request) {
     }
 
     const key = dedupeKey(payload, keys);
-    if (existing.has(key) || incoming.has(key)) {
+    if (incoming.has(key)) {
       summary.skipped += 1;
       return;
     }
 
     incoming.add(key);
+    const existingId = existing.get(key);
+    if (existingId) {
+      rowsToUpdate.push({ id: existingId, payload });
+      return;
+    }
+
     rowsToInsert.push(payload);
   });
+
+  for (const row of rowsToUpdate) {
+    const { error } = await supabase.from(moduleKey).update(row.payload).eq("id", row.id);
+    if (error) summary.skipped += 1;
+    else summary.updated += 1;
+  }
 
   for (let index = 0; index < rowsToInsert.length; index += 250) {
     const chunk = rowsToInsert.slice(index, index + 250);
