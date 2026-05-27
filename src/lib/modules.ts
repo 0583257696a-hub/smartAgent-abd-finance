@@ -362,11 +362,13 @@ export function getValue(row: OpsRecord, key: string) {
   let value: unknown = row;
 
   for (const part of key.split(".")) {
-    if (!value || typeof value !== "object" || Array.isArray(value)) return "";
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return fallbackDottedValue(row, key);
+    }
     value = (value as Record<string, RecordValue>)[part];
   }
 
-  return value as RecordValue;
+  return (value ?? fallbackDottedValue(row, key)) as RecordValue;
 }
 
 export function setValue(row: OpsRecord, key: string, value: string) {
@@ -384,4 +386,9 @@ export function setValue(row: OpsRecord, key: string, value: string) {
       : {};
   target[rest.join(".")] = value;
   row[first] = target;
+}
+
+function fallbackDottedValue(row: OpsRecord, key: string) {
+  const lastSegment = key.split(".").pop();
+  return lastSegment ? row[lastSegment] ?? "" : "";
 }

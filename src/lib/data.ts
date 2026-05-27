@@ -1,5 +1,5 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
-import type { ModuleConfig, OpsRecord, RecordValue } from "@/lib/modules";
+import { getValue, type ModuleConfig, type OpsRecord, type RecordValue } from "@/lib/modules";
 
 type SupabaseRow = OpsRecord & { id: string; data?: OpsRecord };
 
@@ -118,7 +118,16 @@ function normalizeSupabaseRow(row: SupabaseRow): OpsRecord {
 function toColumnPayload(config: ModuleConfig, record: OpsRecord) {
   const payload: OpsRecord = {};
   config.fields.forEach((field) => {
-    if (record[field.key] !== undefined) payload[field.key] = record[field.key];
+    const value = getValue(record, field.key);
+    if (value === undefined) return;
+
+    if (field.key.includes(".")) {
+      const column = field.key.split(".").pop();
+      if (column) payload[column] = value;
+      return;
+    }
+
+    payload[field.key] = value;
   });
   return payload;
 }
