@@ -36,14 +36,19 @@ export default function ModulePage({ moduleKey }: { moduleKey: ModuleKey }) {
     void Promise.resolve().then(async () => {
       setActiveModule(config.route.replace("/", ""));
       setLoading(true);
-      if (config.source === "private") {
-        setRows(getPrivateData(config.key, userId));
+      try {
+        if (config.source === "private") {
+          setRows(getPrivateData(config.key, userId));
+        } else {
+          const nextRows = await loadPublicRows(config);
+          setRows(nextRows);
+        }
+      } catch (error) {
+        console.error(`Failed to load ${config.key}`, error);
+        setRows([]);
+      } finally {
         setLoading(false);
-        return;
       }
-      const nextRows = await loadPublicRows(config);
-      setRows(nextRows);
-      setLoading(false);
     });
   }, [config, setActiveModule]);
 

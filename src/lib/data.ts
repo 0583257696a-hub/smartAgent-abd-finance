@@ -7,14 +7,18 @@ const metaFields = new Set(["created_at", "updated_at", "source_key", "data"]);
 
 export async function loadPublicRows(config: ModuleConfig) {
   if (isSupabaseConfigured()) {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from(config.key)
-      .select("*")
-      .order("created_at", { ascending: true });
+    try {
+      const supabase = createClient();
+      const { data, error } = await withTimeout(
+        supabase.from(config.key).select("*"),
+        2500,
+      );
 
-    if (!error && data?.length) {
-      return (data as SupabaseRow[]).map(normalizeSupabaseRow);
+      if (!error && data?.length) {
+        return (data as SupabaseRow[]).map(normalizeSupabaseRow);
+      }
+    } catch (error) {
+      console.warn(`Falling back to JSON data for ${config.key}`, error);
     }
   }
 
@@ -23,11 +27,28 @@ export async function loadPublicRows(config: ModuleConfig) {
 
 async function loadJsonRows(config: ModuleConfig) {
   const response = await fetch(`/data/${config.file}`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Failed to load /data/${config.file}`);
   const rows = (await response.json()) as OpsRecord[];
   return rows.map((row, index) => ({
     ...row,
     id: String(row.id ?? `${config.key}_${index}`),
   }));
+}
+
+function withTimeout<T>(promise: PromiseLike<T>, ms: number) {
+  return new Promise<T>((resolve, reject) => {
+    const timer = globalThis.setTimeout(() => reject(new Error("Supabase request timed out")), ms);
+    promise.then(
+      (value) => {
+        globalThis.clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        globalThis.clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
 }
 
 export async function createPublicRow(config: ModuleConfig, record: OpsRecord) {
