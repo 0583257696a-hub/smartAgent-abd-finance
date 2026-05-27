@@ -101,6 +101,7 @@ export default function ImportExcel() {
   async function handleFile(file: File) {
     setImporting(true);
     const summary = { added: 0, updated: 0, skipped: 0 };
+    const sheetSummaries: string[] = [];
 
     try {
       const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
@@ -110,6 +111,7 @@ export default function ImportExcel() {
           const config = findModule(sheetName);
           if (!config) {
             summary.skipped += 1;
+            sheetSummaries.push(`${sheetName}: לא זוהה`);
             continue;
           }
 
@@ -123,6 +125,7 @@ export default function ImportExcel() {
             const result = importPrivateRows(config, rows);
             summary.added += result.added;
             summary.updated += result.updated;
+            sheetSummaries.push(`${sheetName}: ${result.added} נוספו, ${result.updated} עודכנו`);
             continue;
           }
 
@@ -130,16 +133,23 @@ export default function ImportExcel() {
           summary.added += result.added;
           summary.updated += result.updated;
           summary.skipped += result.skipped;
+          sheetSummaries.push(`${sheetName}: ${result.added} נוספו, ${result.updated} עודכנו, ${result.skipped} דולגו`);
         } catch (error) {
           console.error(`Import failed for sheet ${sheetName}`, error);
           summary.skipped += 1;
+          sheetSummaries.push(`${sheetName}: נכשל`);
         }
       }
 
-      alert(`${summary.added} נוספו, ${summary.updated} עודכנו, ${summary.skipped} דולגו`);
+      alert([
+        `${summary.added} נוספו, ${summary.updated} עודכנו, ${summary.skipped} דולגו`,
+        "",
+        ...sheetSummaries,
+      ].join("\n"));
+      window.dispatchEvent(new Event("ops:data-imported"));
     } catch (error) {
       console.error(error);
-      alert("ייבוא האקסל נכשל. בדוק שהקובץ תואם לתבנית הייבוא.");
+      alert(`ייבוא האקסל נכשל: ${error instanceof Error ? error.message : "שגיאה לא ידועה"}`);
     } finally {
       setImporting(false);
     }

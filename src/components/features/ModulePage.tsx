@@ -34,23 +34,35 @@ export default function ModulePage({ moduleKey }: { moduleKey: ModuleKey }) {
 
   useEffect(() => {
     if (!config) return;
-    void Promise.resolve().then(async () => {
-      setActiveModule(config.route.replace("/", ""));
+    const moduleConfig = config;
+    let cancelled = false;
+
+    async function loadRows() {
+      setActiveModule(moduleConfig.route.replace("/", ""));
       setLoading(true);
       try {
-        if (config.source === "private") {
-          setRows(getPrivateData(config.key, userId));
+        if (moduleConfig.source === "private") {
+          if (!cancelled) setRows(getPrivateData(moduleConfig.key, userId));
         } else {
-          const nextRows = await loadPublicRows(config);
-          setRows(nextRows);
+          const nextRows = await loadPublicRows(moduleConfig);
+          if (!cancelled) setRows(nextRows);
         }
       } catch (error) {
-        console.error(`Failed to load ${config.key}`, error);
-        setRows([]);
+        console.error(`Failed to load ${moduleConfig.key}`, error);
+        if (!cancelled) setRows([]);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    });
+    }
+
+    void loadRows();
+    const reload = () => void loadRows();
+    window.addEventListener("ops:data-imported", reload);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("ops:data-imported", reload);
+    };
   }, [config, setActiveModule]);
 
   const filteredRows = useMemo(() => {
