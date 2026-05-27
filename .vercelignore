@@ -2,10 +2,11 @@
 .next
 node_modules
 .tmp-chrome-check
+.tmp-vercel-env
 local-*.log
 *.tsbuildinfo
 
-# Local reference/archive folders that are not needed for the web deployment
+# Local reference/archive folders that are not needed for deployment
 מערכת_התפעול
 archive
 html_legacy
