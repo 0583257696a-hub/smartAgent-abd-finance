@@ -104,7 +104,7 @@ export default function ImportExcel() {
     const sheetSummaries: string[] = [];
 
     try {
-      const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
+      const workbook = await readWorkbook(file);
 
       for (const sheetName of workbook.SheetNames) {
         try {
@@ -182,6 +182,36 @@ export default function ImportExcel() {
       />
     </label>
   );
+}
+
+async function readWorkbook(file: File) {
+  const options: XLSX.ParsingOptions = {
+    type: "array",
+    WTF: false,
+    cellHTML: false,
+    cellNF: false,
+    cellStyles: false,
+  };
+
+  try {
+    return XLSX.read(await file.arrayBuffer(), options);
+  } catch (error) {
+    console.warn("ArrayBuffer Excel parsing failed, retrying with binary string", error);
+    const binary = await fileToBinaryString(file);
+    return XLSX.read(binary, {
+      ...options,
+      type: "binary",
+    });
+  }
+}
+
+function fileToBinaryString(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error ?? new Error("Failed to read Excel file"));
+    reader.readAsBinaryString(file);
+  });
 }
 
 function findModule(sheetName: string) {
