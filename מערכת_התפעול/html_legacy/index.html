@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>מרכז תפעול לסוכן</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%2308111f'/%3E%3Cpath d='M8 22.5V9.5l8-4.5 8 4.5v13l-8 4.5-8-4.5Z' fill='none' stroke='%2315b8a6' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="style.css?v=20260518-bank-number-cards" />
+  <style>
+    html,
+    body {
+      overflow-x: hidden;
+    }
+
+    .secondary-row {
+      overflow: hidden;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+  <section id="publicPortal" class="portal-shell">
+    <header class="portal-header">
+      <a class="portal-logo" href="#landing" aria-label="מרכז תפעול לסוכן">
+        <span class="portal-logo-mark" aria-hidden="true"></span>
+        <span>
+          <strong>מרכז תפעול לסוכן</strong>
+          <small>Insurance Operations Platform</small>
+        </span>
+      </a>
+      <nav class="portal-nav" aria-label="ניווט">
+        <a href="#features">יכולות</a>
+        <a href="#security">אבטחה</a>
+        <a href="#workflow">תהליך עבודה</a>
+      </nav>
+      <div class="portal-actions">
+        <a class="portal-button ghost" href="#login">התחברות</a>
+        <a class="portal-button primary" href="#register">בקשת הצטרפות</a>
+      </div>
+    </header>
+
+    <main id="landingView" class="landing-view">
+      <section class="hero-section">
+        <div class="hero-copy">
+          <p class="section-kicker">פלטפורמת תפעול לסוכני ביטוח ופנסיה</p>
+          <h1>כל המידע התפעולי של הסוכנות במקום אחד, מסודר לפי הרשאות.</h1>
+          <p>
+            מערכת עברית, מהירה ומודולרית לניהול מיילים תפעוליים, תבניות, קודי מוסד,
+            מוקדי שירות, דמי ניהול ונתונים פרטיים של כל סוכנות.
+          </p>
+          <div class="hero-actions">
+            <a class="portal-button primary large" href="#register">שליחת בקשת הצטרפות</a>
+            <a class="portal-button ghost large" href="#login">כניסה למערכת</a>
+          </div>
+        </div>
+        <div class="hero-product" aria-label="תצוגה מקדימה של המערכת">
+          <div class="mock-toolbar">
+            <span></span><span></span><span></span>
+          </div>
+          <div class="mock-search">חיפוש בטאב הנוכחי...</div>
+          <div class="mock-grid">
+            <div class="mock-side"></div>
+            <div class="mock-table">
+              <span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="features" class="portal-section">
+        <div class="section-head">
+          <h2>בנוי לעבודה תפעולית אמיתית</h2>
+          <p>הפרדה בין מידע אוניברסלי לכל המשתמשים לבין מידע פרטי של כל סוכנות.</p>
+        </div>
+        <div class="feature-grid">
+          <article>
+            <span class="feature-icon">01</span>
+            <h3>דאטה גלובלי</h3>
+            <p>מספרי בנקים, קודי מוסד, מוקדי שירות ותבניות כלליות לכל המשתמשים.</p>
+          </article>
+          <article>
+            <span class="feature-icon">02</span>
+            <h3>דאטה פרטי</h3>
+            <p>מספרי סוכן, מעסיקים, מפקחים, סיסמאות והסכמים פרטיים לפי סוכנות.</p>
+          </article>
+          <article>
+            <span class="feature-icon">03</span>
+            <h3>אישור מנהל</h3>
+            <p>משתמש חדש נרשם, ממתין לאישור, ורק לאחר אישור מקבל גישה למערכת.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="security" class="portal-section split-section">
+        <div>
+          <h2>הרשמה מבוקרת, לא פתוחה לכולם</h2>
+          <p>
+            ברירת המחדל המומלצת היא סטטוס ממתין לאישור. אתה מאשר משתמשים מפאנל אדמין,
+            קובע תפקיד, ובהמשך אפשר לשייך כל משתמש לסוכנות.
+          </p>
+        </div>
+        <div class="approval-card">
+          <span>בקשת משתמש חדשה</span>
+          <strong>ממתין לאישור מנהל</strong>
+          <div class="approval-actions">
+            <button type="button">אישור</button>
+            <button type="button">דחייה</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="workflow" class="portal-section workflow-section">
+        <div class="section-head">
+          <h2>איך זה יעבוד לאחר חיבור Supabase</h2>
+          <p>Netlify יישאר האתר, Supabase ינהל משתמשים, הרשאות ודאטה.</p>
+        </div>
+        <div class="workflow-steps">
+          <span>הרשמה</span>
+          <span>המתנה לאישור</span>
+          <span>אישור בפאנל אדמין</span>
+          <span>כניסה למערכת</span>
+        </div>
+      </section>
+    </main>
+
+    <main id="loginView" class="auth-view" hidden>
+      <form id="loginForm" class="auth-card">
+        <a class="auth-back" href="#landing">חזרה לדף הבית</a>
+        <h2>כניסה למערכת</h2>
+        <p>כניסה זמנית במצב הדגמה. החיבור האמיתי יתבצע מול Supabase.</p>
+        <label>אימייל
+          <input name="email" type="email" autocomplete="email" required placeholder="name@example.co.il">
+        </label>
+        <label>סיסמה
+          <input name="password" type="password" autocomplete="current-password" required placeholder="••••••••">
+        </label>
+        <button class="portal-button primary full" type="submit">כניסה</button>
+        <p class="auth-note">משתמש אדמין זמני: admin@abd-finance.co.il / 123456</p>
+        <a href="#register">אין לך משתמש? שלח בקשת הצטרפות</a>
+      </form>
+    </main>
+
+    <main id="registerView" class="auth-view" hidden>
+      <form id="registerForm" class="auth-card wide">
+        <a class="auth-back" href="#landing">חזרה לדף הבית</a>
+        <h2>בקשת הצטרפות</h2>
+        <p>הבקשה תישמר כרגע מקומית לצורך הדגמה. לאחר חיבור Supabase היא תגיע לפאנל האדמין שלך.</p>
+        <div class="auth-grid">
+          <label>שם מלא
+            <input name="fullName" required placeholder="שם מלא">
+          </label>
+          <label>אימייל
+            <input name="email" type="email" required placeholder="name@example.co.il">
+          </label>
+          <label>טלפון
+            <input name="phone" inputmode="tel" placeholder="050-0000000">
+          </label>
+          <label>שם סוכנות
+            <input name="agency" required placeholder="שם הסוכנות">
+          </label>
+          <label>סיסמה
+            <input name="password" type="password" autocomplete="new-password" required minlength="6" placeholder="לפחות 6 תווים">
+          </label>
+          <label>אימות סיסמה
+            <input name="passwordConfirm" type="password" autocomplete="new-password" required minlength="6" placeholder="הקלד שוב את הסיסמה">
+          </label>
+        </div>
+        <label>הערה למנהל
+          <textarea name="note" rows="4" placeholder="לדוגמה: מספר עובדים, סוג שימוש, הערות מיוחדות"></textarea>
+        </label>
+        <button class="portal-button primary full" type="submit">שליחת בקשה לאישור</button>
+        <a href="#login">כבר יש לך משתמש? התחברות</a>
+      </form>
+    </main>
+  </section>
+
+  <section id="adminPortal" class="admin-shell" hidden>
+    <aside class="admin-sidebar">
+      <a class="portal-logo" href="#admin">
+        <span class="portal-logo-mark" aria-hidden="true"></span>
+        <span>
+          <strong>פאנל אדמין</strong>
+          <small>ניהול משתמשים והרשאות</small>
+        </span>
+      </a>
+      <nav>
+        <a class="active" href="#admin">בקשות הצטרפות</a>
+        <a href="#app">מערכת תפעול</a>
+        <button id="logoutBtn" type="button">יציאה</button>
+      </nav>
+    </aside>
+    <main class="admin-main">
+      <header class="admin-topbar">
+        <div>
+          <h1>ניהול משתמשים והרשאות</h1>
+          <p>אישור משתמשים, קביעת תפקידים ושליטה בגישה למודולים.</p>
+        </div>
+        <button id="seedPendingBtn" class="portal-button ghost" type="button">הוסף בקשת דוגמה</button>
+      </header>
+      <section class="admin-summary-grid">
+        <article>
+          <span>ממתינים</span>
+          <strong id="pendingCount">0</strong>
+        </article>
+        <article>
+          <span>מאושרים</span>
+          <strong id="approvedCount">0</strong>
+        </article>
+        <article>
+          <span>חסומים</span>
+          <strong id="rejectedCount">0</strong>
+        </article>
+        <article>
+          <span>סה״כ משתמשים</span>
+          <strong id="totalUsersCount">0</strong>
+        </article>
+      </section>
+      <section class="admin-panel">
+        <div class="admin-panel-head">
+          <div>
+            <h2>משתמשים והרשאות</h2>
+            <p>בחר תפקיד, סטטוס והרשאות לכל משתמש.</p>
+          </div>
+          <input id="adminUserSearch" class="admin-search" type="search" placeholder="חיפוש משתמש / אימייל / סוכנות...">
+        </div>
+        <div id="adminUsersList" class="admin-list"></div>
+      </section>
+    </main>
+  </section>
+
+  <div id="appShell" class="app-shell" hidden>
+    <aside class="sidebar" aria-label="ניווט ראשי">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32"><path d="M8 22.5V9.5l8-4.5 8 4.5v13l-8 4.5-8-4.5Z"/><path d="M12 19.5v-7l4-2.3 4 2.3v7l-4 2.3-4-2.3Z"/></svg>
+        </div>
+        <div>
+          <h1>מרכז תפעול לסוכן</h1>
+          <p>Insurance Operations Platform</p>
+        </div>
+      </div>
+
+      <nav id="sideNav" class="side-nav"></nav>
+
+      <div class="sidebar-footer">
+        <button id="emailSignatureBtn" class="sidebar-action secondary" type="button">
+          <span class="icon" data-icon="edit"></span>
+          חתימת מייל
+        </button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="ops-header">
+        <div class="header-row primary-row">
+          <div class="search-box">
+            <span class="icon search-icon" data-icon="search"></span>
+            <input id="mainSearch" type="search" autocomplete="off" placeholder="חיפוש בטאב הנוכחי..." />
+            <button id="clearSearchBtn" class="icon-button" type="button" title="נקה חיפוש">
+              <span class="icon" data-icon="x"></span>
+            </button>
+          </div>
+
+          <div class="segmented" aria-label="טווח חיפוש">
+            <button id="localSearchBtn" class="active" type="button">חיפוש בטאב</button>
+            <button id="globalSearchBtn" type="button">חיפוש גלובלי</button>
+          </div>
+
+          <div class="settings-menu">
+            <button id="settingsBtn" class="toolbar-button icon-only" type="button" title="הגדרות">
+              <span class="icon" data-icon="settings"></span>
+            </button>
+            <div id="settingsDropdown" class="settings-dropdown" hidden>
+              <a class="settings-item" href="import-template.xlsx" download="מרכז_תפעול_תבנית_ייבוא_ריקה.xlsx">
+                <span class="icon" data-icon="download"></span>
+                הורדת Excel לייבוא
+              </a>
+              <label class="settings-item">
+                <span class="icon" data-icon="upload"></span>
+                ייבוא Excel
+                <input id="importInput" type="file" accept="application/json,.json,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden />
+              </label>
+              <button id="settingsSignatureBtn" class="settings-item" type="button">
+                <span class="icon" data-icon="edit"></span>
+                חתימת מייל
+              </button>
+              <button id="filingEmailBtn" class="settings-item" type="button">
+                <span class="icon" data-icon="mail"></span>
+                מייל לתיוק
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="header-row secondary-row">
+          <div class="segmented view-toggle" aria-label="מצב תצוגה">
+            <button id="tableViewBtn" class="active" type="button">
+              <span class="icon" data-icon="table"></span>
+              טבלה
+            </button>
+            <button id="cardViewBtn" type="button">
+              <span class="icon" data-icon="cards"></span>
+              כרטיסים
+            </button>
+          </div>
+        </div>
+
+      </header>
+
+      <section class="module-shell">
+        <div class="module-head">
+          <div>
+            <h2 id="moduleTitle">מיילים תפעוליים</h2>
+            <p id="moduleMeta">טוען נתונים...</p>
+          </div>
+          <div class="module-actions">
+            <button id="addRecordBtn" class="toolbar-button primary module-add-button" type="button">
+              <span class="icon" data-icon="plus"></span>
+              הוספה
+            </button>
+          </div>
+        </div>
+
+        <div id="filtersBar" class="filters-bar"></div>
+        <div id="results" class="results"></div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="recordDialog" class="modal">
+    <form id="recordForm" method="dialog" class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h3 id="modalTitle">עריכת רשומה</h3>
+          <p id="modalSubtitle">השינויים נשמרים ב־LocalStorage.</p>
+        </div>
+        <button class="icon-button" value="cancel" aria-label="סגירה" type="submit">
+          <span class="icon" data-icon="x"></span>
+        </button>
+      </div>
+      <div id="formFields" class="form-grid"></div>
+      <div class="modal-actions">
+        <button class="toolbar-button" value="cancel" type="submit">ביטול</button>
+        <button id="saveRecordBtn" class="toolbar-button primary" value="default" type="submit">שמירה</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="templateDialog" class="modal">
+    <div class="modal-card template-modal">
+      <div class="modal-head">
+        <div>
+          <h3 id="templateTitle">תבנית מייל</h3>
+          <p id="templateSubject"></p>
+        </div>
+        <button id="closeTemplateBtn" class="icon-button" aria-label="סגירה" type="button">
+          <span class="icon" data-icon="x"></span>
+        </button>
+      </div>
+      <pre id="templateBody" class="template-body"></pre>
+      <div class="modal-actions">
+        <button id="copyTemplateBtn" class="toolbar-button primary" type="button">
+          <span class="icon" data-icon="copy"></span>
+          העתק תבנית
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="sendTemplateDialog" class="modal send-template-dialog">
+    <div class="modal-card send-template-modal">
+      <div class="modal-head">
+        <div>
+          <h3>בחירת יעד לשליחת המייל</h3>
+          <p id="sendTemplateSubtitle">בחר מייל תפעולי והמערכת תפתח הודעה מוכנה ב-Outlook.</p>
+        </div>
+        <button id="closeSendTemplateBtn" class="icon-button" aria-label="סגירה" type="button">
+          <span class="icon" data-icon="x"></span>
+        </button>
+      </div>
+      <div class="send-search-box">
+        <span class="icon search-icon" data-icon="search"></span>
+        <input id="sendEmailSearch" type="search" autocomplete="off" placeholder="חיפוש חברה / פעולה / מייל..." />
+        <button id="clearSendEmailSearchBtn" class="icon-button" type="button" title="נקה חיפוש">
+          <span class="icon" data-icon="x"></span>
+        </button>
+      </div>
+      <div class="send-client-panel">
+        <div class="send-client-head">
+          <div>
+            <strong>בחירת לקוח</strong>
+            <span>הלקוח יתווסף אוטומטית לנושא המייל</span>
+          </div>
+          <strong id="selectedSendClient">לא נבחר לקוח</strong>
+        </div>
+        <div class="send-search-box compact">
+          <span class="icon search-icon" data-icon="search"></span>
+          <input id="sendClientSearch" type="search" autocomplete="off" placeholder="חיפוש לקוח / ת.ז / מייל..." />
+          <button id="clearSendClientSearchBtn" class="icon-button" type="button" title="נקה חיפוש לקוח">
+            <span class="icon" data-icon="x"></span>
+          </button>
+        </div>
+        <div id="sendClientResults" class="client-pick-results"></div>
+      </div>
+      <div id="sendEmailResults" class="send-results"></div>
+      <div class="send-action-bar">
+        <div>
+          <span>מיילים שנבחרו</span>
+          <strong id="selectedSendEmail">לא נבחר יעד</strong>
+        </div>
+        <button id="sendTemplateMailBtn" class="toolbar-button success" type="button" disabled>
+          <span class="icon" data-icon="send"></span>
+          שלח
+        </button>
+      </div>
+    </div>
+  </dialog>
+  <dialog id="clientDialog" class="modal">
+    <div class="modal-card client-modal">
+      <div class="modal-head">
+        <div>
+          <h3 id="clientTitle">פרטי לקוח</h3>
+          <p id="clientSubtitle"></p>
+        </div>
+        <button id="closeClientBtn" class="icon-button" aria-label="סגירה" type="button">
+          <span class="icon" data-icon="x"></span>
+        </button>
+      </div>
+      <div id="clientDetails" class="client-details"></div>
+      <div class="modal-actions">
+        <button id="mailClientBtn" class="toolbar-button primary" type="button">
+          <span class="icon" data-icon="send"></span>
+          שלח מייל ללקוח
+        </button>
+      </div>
+    </div>
+  </dialog>
+  <dialog id="snifimDialog" class="modal send-template-dialog">
+    <div class="modal-card send-template-modal">
+      <div class="modal-head">
+        <div>
+          <h3 id="snifimTitle">סניפי בנק</h3>
+          <p id="snifimSubtitle">רשימת סניפים</p>
+        </div>
+        <button id="closeSnifimBtn" class="icon-button" aria-label="סגירה" type="button">
+          <span class="icon" data-icon="x"></span>
+        </button>
+      </div>
+      <div class="send-search-box">
+        <span class="icon search-icon" data-icon="search"></span>
+        <input id="snifimSearch" type="search" autocomplete="off" placeholder="חיפוש לפי עיר, שם או מספר סניף..." />
+        <button id="clearSnifimSearchBtn" class="icon-button" type="button" title="נקה חיפוש">
+          <span class="icon" data-icon="x"></span>
+        </button>
+      </div>
+      <div id="snifimResults" class="send-results" style="max-height: 400px; overflow-y: auto; padding: 10px;"></div>
+    </div>
+  </dialog>
+
+  <dialog id="signatureDialog" class="modal">
+    <form id="signatureForm" method="dialog" class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h3>חתימת מייל</h3>
+          <p>החתימה תצורף אוטומטית לסוף כל תבנית שנשלחת דרך המערכת.</p>
+        </div>
+        <button class="icon-button" value="cancel" aria-label="סגירה" type="submit">
+          <span class="icon" data-icon="x"></span>
+        </button>
+      </div>
+      <label class="signature-field">
+        <span>טקסט חתימה</span>
+        <textarea id="emailSignatureInput" rows="8" placeholder="בברכה,&#10;שם מלא&#10;סוכנות / תפקיד&#10;טלפון"></textarea>
+      </label>
+      <div class="modal-actions">
+        <button class="toolbar-button" value="cancel" type="submit">ביטול</button>
+        <button id="saveSignatureBtn" class="toolbar-button primary" value="default" type="submit">שמירה</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="filingEmailDialog" class="modal">
+    <form id="filingEmailForm" method="dialog" class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h3>מייל לתיוק</h3>
+          <p>כתובת זו תתווסף אוטומטית כעותק בכל מייל שיוצא מתבנית.</p>
+        </div>
+        <button class="icon-button" value="cancel" aria-label="סגירה" type="submit">
+          <span class="icon" data-icon="x"></span>
+        </button>
+      </div>
+      <label class="signature-field">
+        <span>כתובת מייל לתיוק</span>
+        <input id="filingEmailInput" type="email" placeholder="archive@example.co.il">
+      </label>
+      <div class="modal-actions">
+        <button class="toolbar-button" value="cancel" type="submit">ביטול</button>
+        <button class="toolbar-button primary" value="default" type="submit">שמירה</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script>
+    (function () {
+      function setHidden(id, value) {
+        var element = document.getElementById(id);
+        if (element) element.hidden = value;
+      }
+      function route() {
+        var view = (location.hash || "#landing").replace("#", "");
+        var isApp = view === "app";
+        var isAdmin = view === "admin";
+        setHidden("publicPortal", isApp || isAdmin);
+        setHidden("adminPortal", !isAdmin);
+        setHidden("appShell", !isApp);
+        setHidden("landingView", !["", "landing", "features", "security", "workflow"].includes(view));
+        setHidden("loginView", view !== "login");
+        setHidden("registerView", view !== "register");
+      }
+      window.addEventListener("hashchange", route);
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", route);
+      else route();
+    }());
+  </script>
+  <script src="assets/vendor/xlsx.full.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/excel.js"></script>
+  <script src="js/supabase-config.js"></script>
+  <script src="js/portal.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

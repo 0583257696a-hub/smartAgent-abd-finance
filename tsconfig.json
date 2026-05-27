@@ -1,0 +1,50 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "scripts/**/*.ts",
+    "supabase/**/*.ts",
+    "prisma.config.ts",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "*.mts"
+  ],
+  "exclude": [
+    "node_modules",
+    "insurance-ops",
+    "ABD-finance-upload-clean",
+    "codex_agent_center_package",
+    "codex_agent_center_package_backup",
+    "plugins",
+    "tools",
+    "tmp_masleka_aviva",
+    "tmp_michal_clearing",
+    "סימולטור_ביטוחים_פרישה",
+    "מערכת פרישה",
+    "מערכת שעות עבודה"
+  ]
+}

@@ -1,0 +1,26 @@
+:root {
+  --primary:        #1B3A6B;
+  --accent:         #2563EB;
+  --accent-light:   #EFF6FF;
+  --bg-shell:       #F1F5F9;
+  --bg-card:        #FFFFFF;
+  --bg-sidebar:     #0F1929;
+  --bg-sidebar-hover: #1A2942;
+  --bg-sidebar-active: #1E3A5F;
+  --text-heading:   #0F1929;
+  --text-body:      #334155;
+  --text-muted:     #64748B;
+  --text-sidebar:   #CBD5E1;
+  --status-active:  #10B981;
+  --status-active-bg: #ECFDF5;
+  --status-pending: #F59E0B;
+  --status-pending-bg: #FFFBEB;
+  --status-blocked: #EF4444;
+  --status-blocked-bg: #FEF2F2;
+  --shadow-card:    0 2px 12px rgba(15,25,41,0.06);
+  --shadow-hover:   0 8px 28px rgba(15,25,41,0.12);
+  --radius-card:    14px;
+  --radius-btn:     9px;
+  --font-main:      'Heebo', 'Arial Hebrew', sans-serif;
+  --sidebar-width:  240px;
+}
