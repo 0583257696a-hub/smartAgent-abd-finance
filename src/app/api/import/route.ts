@@ -63,35 +63,42 @@ export async function POST(request: Request) {
   const columns = moduleColumns[moduleKey] ?? [];
   const keys = dedupFields[moduleKey] ?? columns;
   const summary = { added: 0, updated: 0, skipped: 0 };
+  const existing = new Set<string>();
+  const incoming = new Set<string>();
 
-  for (const record of records) {
+  const existingResponse = await supabase.from(moduleKey).select(columns.join(","));
+  if (existingResponse.error) {
+    return Response.json({ error: existingResponse.error.message }, { status: 500 });
+  }
+
+  (existingResponse.data as unknown as Record<string, string>[] | null)?.forEach((row) => {
+    existing.add(dedupeKey(row, keys));
+  });
+
+  const rowsToInsert: Record<string, string>[] = [];
+
+  records.forEach((record) => {
     const payload = toColumnPayload(record, columns);
     if (!Object.values(payload).some((value) => String(value ?? "").trim())) {
       summary.skipped += 1;
-      continue;
+      return;
     }
 
-    let query = supabase.from(moduleKey).select("id").limit(1);
-    keys.forEach((key) => {
-      query = query.eq(key, String(payload[key] ?? ""));
-    });
-
-    const existing = await query.maybeSingle();
-    if (existing.error) {
+    const key = dedupeKey(payload, keys);
+    if (existing.has(key) || incoming.has(key)) {
       summary.skipped += 1;
-      continue;
+      return;
     }
 
-    if (existing.data?.id) {
-      const { error } = await supabase.from(moduleKey).update(payload).eq("id", existing.data.id);
-      if (error) summary.skipped += 1;
-      else summary.updated += 1;
-      continue;
-    }
+    incoming.add(key);
+    rowsToInsert.push(payload);
+  });
 
-    const { error } = await supabase.from(moduleKey).insert(payload);
+  for (let index = 0; index < rowsToInsert.length; index += 250) {
+    const chunk = rowsToInsert.slice(index, index + 250);
+    const { error } = await supabase.from(moduleKey).insert(chunk);
     if (error) summary.skipped += 1;
-    else summary.added += 1;
+    else summary.added += chunk.length;
   }
 
   return Response.json(summary);
@@ -117,4 +124,12 @@ function readValue(record: OpsRecord, key: string): RecordValue {
   }
 
   return "";
+}
+
+function dedupeKey(row: Record<string, string>, keys: string[]) {
+  return keys.map((key) => normalize(String(row[key] ?? ""))).join("|");
+}
+
+function normalize(value: string) {
+  return value.toLowerCase().replace(/\s+/g, " ").trim();
 }
