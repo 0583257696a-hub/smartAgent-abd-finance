@@ -2,6 +2,7 @@ import { useState } from "react";
 import { strToU8, unzipSync, zipSync } from "fflate";
 import * as XLSX from "xlsx";
 import { getPrivateData, setPrivateData } from "@/lib/local-storage";
+import { importPublicRows as importCloudflareRows } from "@/lib/data";
 import {
   getValue,
   modules,
@@ -265,17 +266,7 @@ function hasValues(row: OpsRecord, fields: FieldConfig[]) {
 }
 
 async function importPublicRows(config: ModuleConfig, rows: OpsRecord[]) {
-  const response = await fetch("/api/import", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ moduleKey: config.key, records: rows }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Import failed for ${config.key}`);
-  }
-
-  return (await response.json()) as { added: number; updated: number; skipped: number };
+  return importCloudflareRows(config, rows);
 }
 
 function importPrivateRows(config: ModuleConfig, rows: OpsRecord[]) {

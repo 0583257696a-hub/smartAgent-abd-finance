@@ -1,3 +1,5 @@
+import type { OpsRecord } from "@/lib/modules";
+
 export const privateModules = [
   "passwords",
   "supervisors",
@@ -7,18 +9,34 @@ export const privateModules = [
   "links",
 ] as const;
 
+const publicModules = [
+  "operational_emails",
+  "email_templates",
+  "management_fees",
+  "insurance_discounts",
+  "deposit_accounts",
+  "service_centers",
+  "institution_codes",
+  "bank_numbers",
+  "mortgage_release",
+] as const;
+
 export type PrivateModule = (typeof privateModules)[number];
 export type PrivateRecord = OpsRecord;
 
-function assertPrivateModule(module: string): asserts module is PrivateModule {
-  if (!(privateModules as readonly string[]).includes(module)) {
-    throw new Error(`Unsupported private module: ${module}`);
+function assertSupportedModule(module: string) {
+  if (
+    !(privateModules as readonly string[]).includes(module) &&
+    !(publicModules as readonly string[]).includes(module)
+  ) {
+    throw new Error(`Unsupported module: ${module}`);
   }
 }
 
 function storageKey(module: string, userId: string) {
-  assertPrivateModule(module);
-  return `ops_private_${userId}_${module}`;
+  assertSupportedModule(module);
+  const prefix = (privateModules as readonly string[]).includes(module) ? "ops_private" : "ops_cloudflare";
+  return `${prefix}_${userId}_${module}`;
 }
 
 function canUseLocalStorage() {
@@ -116,4 +134,3 @@ export function setUserSetting(key: string, userId: string, value: string) {
   if (!canUseLocalStorage()) return;
   window.localStorage.setItem(`ops_${key}_${userId}`, value);
 }
-import type { OpsRecord } from "@/lib/modules";

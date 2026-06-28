@@ -1,14 +1,72 @@
-import { createClient, createServerClient, isSupabaseConfigured } from "./supabase";
+type LocalProfile = {
+  id: string;
+  email: string;
+  full_name: string;
+  agency_name: string;
+  phone: string;
+  role: "agent" | "admin" | "super_admin" | "viewer";
+  status: "approved" | "pending" | "blocked";
+};
+
+const sessionKey = "ops_cloudflare_session";
+const usersKey = "ops_cloudflare_users";
+
+const defaultAdmin: LocalProfile & { password: string } = {
+  id: "local-admin",
+  email: "admin@insurance-ops.co.il",
+  password: "Admin123456!",
+  full_name: "מנהל המערכת",
+  agency_name: "מרכז תפעול",
+  phone: "050-0000000",
+  role: "super_admin",
+  status: "approved",
+};
+
+function canUseLocalStorage() {
+  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+}
+
+function readUsers() {
+  if (!canUseLocalStorage()) return [defaultAdmin];
+
+  const raw = window.localStorage.getItem(usersKey);
+  if (!raw) {
+    window.localStorage.setItem(usersKey, JSON.stringify([defaultAdmin]));
+    return [defaultAdmin];
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Array<LocalProfile & { password: string }>;
+    if (!parsed.some((user) => user.email === defaultAdmin.email)) parsed.unshift(defaultAdmin);
+    return parsed;
+  } catch {
+    window.localStorage.setItem(usersKey, JSON.stringify([defaultAdmin]));
+    return [defaultAdmin];
+  }
+}
+
+function writeUsers(users: Array<LocalProfile & { password: string }>) {
+  if (!canUseLocalStorage()) return;
+  window.localStorage.setItem(usersKey, JSON.stringify(users));
+}
 
 export async function signIn(email: string, password: string) {
-  const supabase = createClient();
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  const users = readUsers();
+  const user = users.find(
+    (candidate) =>
+      candidate.email.toLowerCase() === email.toLowerCase() &&
+      candidate.password === password,
+  );
 
-  if (error) throw error;
-  return data;
+  if (!user) throw new Error("Invalid credentials");
+  if (user.status === "blocked") throw new Error("User blocked");
+
+  if (canUseLocalStorage()) {
+    const { password: _password, ...profile } = user;
+    window.localStorage.setItem(sessionKey, JSON.stringify(profile));
+  }
+
+  return { user };
 }
 
 export async function signUp(payload: {
@@ -19,108 +77,58 @@ export async function signUp(payload: {
   phone: string;
   notes?: string;
 }) {
-  const supabase = createClient();
-  const { data, error } = await supabase.auth.signUp({
+  const users = readUsers();
+  if (users.some((user) => user.email.toLowerCase() === payload.email.toLowerCase())) {
+    throw new Error("User already exists");
+  }
+
+  const user = {
+    id: recordId(),
     email: payload.email,
     password: payload.password,
-    options: {
-      data: {
-        full_name: payload.full_name,
-        agency_name: payload.agency_name,
-        phone: payload.phone,
-        notes: payload.notes,
-        status: "pending",
-        role: "agent",
-      },
-    },
-  });
+    full_name: payload.full_name,
+    agency_name: payload.agency_name,
+    phone: payload.phone,
+    role: "agent" as const,
+    status: "pending" as const,
+  };
 
-  if (error) throw error;
-  return data;
+  writeUsers([...users, user]);
+  return { user };
 }
 
 export async function signOut() {
-  const supabase = createClient();
-  const { error } = await supabase.auth.signOut();
-
-  if (error) throw error;
+  if (canUseLocalStorage()) window.localStorage.removeItem(sessionKey);
 }
 
 export async function getProfile() {
-  if (!isSupabaseConfigured()) {
-    return {
-      id: "local-dev",
-      email: "local@insurance-ops.dev",
-      full_name: "משתמש מקומי",
-      agency_name: "פיתוח מקומי",
-      phone: "",
-      role: "super_admin",
-      status: "approved",
-    };
+  if (!canUseLocalStorage()) return getServerProfile();
+
+  const raw = window.localStorage.getItem(sessionKey);
+  if (raw) {
+    try {
+      return JSON.parse(raw) as LocalProfile;
+    } catch {
+      window.localStorage.removeItem(sessionKey);
+    }
   }
 
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
-
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-
-  if (error) return profileFromUser(user);
-  return data;
+  return null;
 }
 
 export async function getServerProfile() {
-  if (!isSupabaseConfigured()) {
-    return {
-      id: "local-dev",
-      email: "local@insurance-ops.dev",
-      full_name: "משתמש מקומי",
-      agency_name: "פיתוח מקומי",
-      phone: "",
-      role: "super_admin",
-      status: "approved",
-    };
-  }
-
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
-
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-
-  if (error) return profileFromUser(user);
-  return data;
+  return {
+    id: "local-dev",
+    email: "local@insurance-ops.dev",
+    full_name: "משתמש מקומי",
+    agency_name: "Cloudflare",
+    phone: "",
+    role: "super_admin",
+    status: "approved",
+  } satisfies LocalProfile;
 }
 
-function profileFromUser(user: {
-  id: string;
-  email?: string | null;
-  user_metadata?: Record<string, unknown>;
-}) {
-  const metadata = user.user_metadata ?? {};
-
-  return {
-    id: user.id,
-    email: user.email ?? "",
-    full_name: String(metadata.full_name ?? ""),
-    agency_name: String(metadata.agency_name ?? ""),
-    phone: String(metadata.phone ?? ""),
-    notes: String(metadata.notes ?? ""),
-    status: String(metadata.status ?? "pending"),
-    role: String(metadata.role ?? "agent"),
-  };
+function recordId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return `${Date.now()}_${Math.random().toString(36).slice(2)}`;
 }
