@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { strToU8, unzipSync, zipSync } from "fflate";
 import * as XLSX from "xlsx";
 import { getPrivateData, setPrivateData } from "@/lib/local-storage";
 import {
@@ -193,16 +194,33 @@ async function readWorkbook(file: File) {
     cellStyles: false,
   };
 
+  const buffer = await file.arrayBuffer();
+
   try {
-    return XLSX.read(await file.arrayBuffer(), options);
+    return XLSX.read(buffer, options);
   } catch (error) {
+    if (error instanceof Error && error.message.includes("Unknown Namespace")) {
+      return XLSX.read(repairContentTypesNamespace(buffer), options);
+    }
+
     console.warn("ArrayBuffer Excel parsing failed, retrying with binary string", error);
-    const binary = await fileToBinaryString(file);
-    return XLSX.read(binary, {
-      ...options,
-      type: "binary",
-    });
+    return XLSX.read(await fileToBinaryString(file), { ...options, type: "binary" });
   }
+}
+
+function repairContentTypesNamespace(buffer: ArrayBuffer) {
+  const files = unzipSync(new Uint8Array(buffer));
+  const contentTypes = files["[Content_Types].xml"];
+  if (!contentTypes) return buffer;
+
+  const xml = new TextDecoder().decode(contentTypes);
+  const repaired = xml.replace(
+    /<Types\b[^>]*>/,
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">',
+  );
+
+  files["[Content_Types].xml"] = strToU8(repaired);
+  return zipSync(files).buffer as ArrayBuffer;
 }
 
 function fileToBinaryString(file: File) {
