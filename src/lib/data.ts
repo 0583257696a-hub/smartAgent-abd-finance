@@ -31,6 +31,9 @@ function writeStoredRows(config: ModuleConfig, rows: OpsRecord[]) {
 }
 
 export async function loadPublicRows(config: ModuleConfig) {
+  const cloudRows = await loadCloudflareRows(config);
+  if (cloudRows) return cloudRows;
+
   const stored = readStoredRows(config);
   if (stored) return stored;
 
@@ -50,6 +53,9 @@ async function loadJsonRows(config: ModuleConfig) {
 }
 
 export async function createPublicRow(config: ModuleConfig, record: OpsRecord) {
+  const cloudRow = await createCloudflareRow(config, record);
+  if (cloudRow) return cloudRow;
+
   const rows = await loadPublicRows(config);
   const nextRecord = { ...normalizeRecord(config, record), id: recordId() };
   writeStoredRows(config, [...rows, nextRecord]);
@@ -57,6 +63,9 @@ export async function createPublicRow(config: ModuleConfig, record: OpsRecord) {
 }
 
 export async function updatePublicRow(config: ModuleConfig, id: string, record: OpsRecord) {
+  const cloudRow = await updateCloudflareRow(config, id, record);
+  if (cloudRow) return cloudRow;
+
   const rows = await loadPublicRows(config);
   const nextRecord = { ...normalizeRecord(config, record), id };
   const nextRows = rows.map((row) => (String(row.id) === String(id) ? nextRecord : row));
@@ -65,6 +74,8 @@ export async function updatePublicRow(config: ModuleConfig, id: string, record: 
 }
 
 export async function deletePublicRow(config: ModuleConfig, id: string) {
+  if (await deleteCloudflareRow(config, id)) return;
+
   const rows = await loadPublicRows(config);
   writeStoredRows(
     config,
@@ -73,6 +84,9 @@ export async function deletePublicRow(config: ModuleConfig, id: string) {
 }
 
 export async function importPublicRows(config: ModuleConfig, records: OpsRecord[]) {
+  const cloudSummary = await importCloudflareRows(config, records);
+  if (cloudSummary) return cloudSummary;
+
   const rows = await loadPublicRows(config);
   const keys = dedupFields[config.key] ?? config.fields.map((field) => field.key);
   const existing = new Map(rows.map((row) => [dedupeKey(row, keys), row]));
@@ -108,6 +122,72 @@ export async function importPublicRows(config: ModuleConfig, records: OpsRecord[
 
   writeStoredRows(config, rows);
   return { added, updated, skipped };
+}
+
+async function loadCloudflareRows(config: ModuleConfig) {
+  try {
+    const response = await fetch(`/api/data/${config.key}`, { cache: "no-store" });
+    if (!response.ok) return null;
+    const body = (await response.json()) as { rows?: OpsRecord[] };
+    return Array.isArray(body.rows) ? body.rows : null;
+  } catch {
+    return null;
+  }
+}
+
+async function createCloudflareRow(config: ModuleConfig, record: OpsRecord) {
+  try {
+    const response = await fetch(`/api/data/${config.key}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ record }),
+    });
+    if (!response.ok) return null;
+    const body = (await response.json()) as { row?: OpsRecord };
+    return body.row ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function updateCloudflareRow(config: ModuleConfig, id: string, record: OpsRecord) {
+  try {
+    const response = await fetch(`/api/data/${config.key}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, record }),
+    });
+    if (!response.ok) return null;
+    const body = (await response.json()) as { row?: OpsRecord };
+    return body.row ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function deleteCloudflareRow(config: ModuleConfig, id: string) {
+  try {
+    const response = await fetch(`/api/data/${config.key}?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function importCloudflareRows(config: ModuleConfig, records: OpsRecord[]) {
+  try {
+    const response = await fetch(`/api/data/${config.key}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ records }),
+    });
+    if (!response.ok) return null;
+    return (await response.json()) as { added: number; updated: number; skipped: number };
+  } catch {
+    return null;
+  }
 }
 
 function normalizeRecord(config: ModuleConfig, record: OpsRecord) {

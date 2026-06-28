@@ -31,7 +31,37 @@ Optional environment variables:
 - `NEXTAUTH_SECRET`
 - `NEXTAUTH_URL`
 
-The current Cloudflare-only build does not use Supabase or any external database.
-Initial data is loaded from `public/data/*.json`; edits and Excel imports are stored in the browser localStorage.
+## Data storage
+
+The app is Cloudflare-only.
+
+Preferred production storage is Cloudflare D1 with a binding named `OPS_DB`.
+If `OPS_DB` is not configured, the app still works by loading `public/data/*.json` and storing edits/imports in browser localStorage.
+
+Create the D1 database:
+
+```bash
+npx wrangler d1 create smart-agent-abd-finance-db
+```
+
+Then add the returned database id to `wrangler.jsonc`:
+
+```jsonc
+"d1_databases": [
+  {
+    "binding": "OPS_DB",
+    "database_name": "smart-agent-abd-finance-db",
+    "database_id": "PASTE_DATABASE_ID_HERE"
+  }
+]
+```
+
+Apply the schema:
+
+```bash
+npx wrangler d1 execute smart-agent-abd-finance-db --file=cloudflare/d1-schema.sql
+```
+
+On first use, each public module seeds itself from `public/data/*.json` if its D1 table has no rows for that module.
 
 Do not deploy this app as a static Pages export. The app is a Next.js app built by OpenNext and should run as a Cloudflare Worker.

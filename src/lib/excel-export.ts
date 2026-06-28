@@ -18,10 +18,10 @@ export function exportToExcel(moduleName: string, data: OpsRecord[]) {
 export function downloadTemplate() {
   const workbook = XLSX.utils.book_new();
 
-  modules.forEach((module) => {
-    const header = module.fields.map((field) => field.label);
+  modules.forEach((moduleConfig) => {
+    const header = moduleConfig.fields.map((field) => field.label);
     const worksheet = XLSX.utils.aoa_to_sheet([header]);
-    XLSX.utils.book_append_sheet(workbook, worksheet, module.label.slice(0, 31));
+    XLSX.utils.book_append_sheet(workbook, worksheet, moduleConfig.label.slice(0, 31));
   });
 
   XLSX.writeFile(workbook, "insurance-ops-import-template.xlsx");
@@ -30,13 +30,13 @@ export function downloadTemplate() {
 export async function exportBackupExcel(userId: string) {
   const workbook = XLSX.utils.book_new();
 
-  for (const module of modules) {
+  for (const moduleConfig of modules) {
     const rows =
-      module.source === "private"
-        ? getPrivateData(module.key, userId)
-        : await loadPublicRows(module);
+      moduleConfig.source === "private"
+        ? getPrivateData(moduleConfig.key, userId)
+        : await loadPublicRows(moduleConfig);
 
-    appendModuleSheet(workbook, module, rows);
+    appendModuleSheet(workbook, moduleConfig, rows);
   }
 
   const date = new Date().toISOString().slice(0, 10);
@@ -55,14 +55,14 @@ export function exportBackupJson(data: Record<string, OpsRecord[]>) {
   URL.revokeObjectURL(url);
 }
 
-function appendModuleSheet(workbook: XLSX.WorkBook, module: ModuleConfig, rows: OpsRecord[]) {
-  const header = module.fields.map((field) => field.label);
+function appendModuleSheet(workbook: XLSX.WorkBook, moduleConfig: ModuleConfig, rows: OpsRecord[]) {
+  const header = moduleConfig.fields.map((field) => field.label);
   const body = rows.map((row) =>
-    module.fields.map((field) => stringifyCellValue(getExcelValue(row, field.key))),
+    moduleConfig.fields.map((field) => stringifyCellValue(getExcelValue(row, field.key))),
   );
   const worksheet = XLSX.utils.aoa_to_sheet([header, ...body]);
 
-  XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName(module.label));
+  XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName(moduleConfig.label));
 }
 
 function getExcelValue(row: OpsRecord, key: string) {
