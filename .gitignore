@@ -11,6 +11,7 @@
 # testing
 /coverage
 /.tmp-chrome-check
+/.wrangler/
 
 # local organization/archive
 /מערכת_התפעול/archive/

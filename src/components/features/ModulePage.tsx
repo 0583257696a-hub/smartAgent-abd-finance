@@ -1,7 +1,21 @@
 'use client'
 
 import { useEffect, useMemo, useState } from "react";
-import { Copy, Edit2, ExternalLink, Eye, EyeOff, Plus, Printer, Send, Trash2 } from "lucide-react";
+import {
+  Building2,
+  Copy,
+  Edit2,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  Mail,
+  MoreHorizontal,
+  Plus,
+  Printer,
+  Send,
+  Trash2,
+  Users,
+} from "lucide-react";
 import DataCards from "@/components/ui/DataCards";
 import DataTable from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
@@ -19,6 +33,24 @@ import ClientModal from "@/components/features/ClientModal";
 
 const userId = "local-dev";
 
+const moduleTitle: Partial<Record<ModuleKey, { title: string; label: string }>> = {
+  operational_emails: { title: "מיילים תפעוליים", label: "מיילים" },
+  email_templates: { title: "תבניות מייל", label: "תבניות" },
+  passwords: { title: "פוליסות וסיסמאות", label: "סיסמאות" },
+  supervisors: { title: "מפקחים", label: "מפקחים" },
+  employers: { title: "עסקים", label: "עסקים" },
+  clients: { title: "לקוחות", label: "לקוחות" },
+  management_fees: { title: "דמי ניהול", label: "דמי ניהול" },
+  insurance_discounts: { title: "הנחות ביטוח", label: "הנחות ביטוח" },
+  deposit_accounts: { title: "חשבונות להפקדה", label: "חשבונות" },
+  service_centers: { title: "מוקדי שירות", label: "מוקדי שירות" },
+  institution_codes: { title: "קודי מוסד", label: "קודי מוסד" },
+  links: { title: "קישורים חשובים", label: "קישורים" },
+  agent_numbers: { title: "מספרי סוכן", label: "מספרי סוכן" },
+  bank_numbers: { title: "מספרי בנקים בישראל", label: "מספרי בנקים" },
+  mortgage_release: { title: "שחרור משכנתא", label: "שחרור משכנתא" },
+};
+
 export default function ModulePage({ moduleKey }: { moduleKey: ModuleKey }) {
   const config = moduleByKey(moduleKey);
   const { searchQuery, viewMode, setActiveModule } = useAppStore();
@@ -31,6 +63,11 @@ export default function ModulePage({ moduleKey }: { moduleKey: ModuleKey }) {
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
   const [feeCompany, setFeeCompany] = useState("");
   const [feeProduct, setFeeProduct] = useState("");
+  const [localSearch, setLocalSearch] = useState("");
+  const [companyFilter, setCompanyFilter] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [openActionMenu, setOpenActionMenu] = useState<string | null>(null);
 
   useEffect(() => {
     if (!config) return;
@@ -69,6 +106,15 @@ export default function ModulePage({ moduleKey }: { moduleKey: ModuleKey }) {
     if (!config) return [];
     let output = rows.filter((row) => searchMatch(JSON.stringify(row), searchQuery));
 
+    if (moduleKey === "operational_emails") {
+      output = output.filter((row) =>
+        searchMatch(JSON.stringify(row), localSearch) &&
+        matchesFilter(row.company, companyFilter) &&
+        matchesFilter(row.department, departmentFilter) &&
+        matchesFilter(row.category, categoryFilter)
+      );
+    }
+
     if (moduleKey === "management_fees") {
       const companies = unique(rows.map((row) => String(row.company ?? "")));
       const company = feeCompany || companies[0] || "";
@@ -78,29 +124,31 @@ export default function ModulePage({ moduleKey }: { moduleKey: ModuleKey }) {
     }
 
     return output;
-  }, [config, feeCompany, feeProduct, moduleKey, rows, searchQuery]);
+  }, [categoryFilter, companyFilter, config, departmentFilter, feeCompany, feeProduct, localSearch, moduleKey, rows, searchQuery]);
 
   if (!config) return null;
 
-  const tableFields = config.tableFields.map((key) => config.fields.find((field) => field.key === key)).filter(Boolean) as FieldConfig[];
-  const displayAsCards = config.cardOnly || viewMode === "cards";
+  const moduleConfig = config;
+  const title = moduleTitle[moduleKey]?.title ?? moduleConfig.title;
+  const label = moduleTitle[moduleKey]?.label ?? moduleConfig.label;
+  const tableFields = moduleConfig.tableFields.map((key) => moduleConfig.fields.find((field) => field.key === key)).filter(Boolean) as FieldConfig[];
+  const displayAsCards = moduleConfig.cardOnly || viewMode === "cards";
+  const emailCompanies = unique(rows.map((row) => String(row.company ?? "")));
+  const emailDepartments = unique(rows.map((row) => String(row.department ?? "")));
+  const emailCategories = unique(rows.map((row) => String(row.category ?? "")));
 
   async function saveRecord(record: OpsRecord) {
-    if (!config) return;
     const id = String(record.id ?? "");
 
-    if (config.source === "private") {
-      if (id) {
-        updateRecord(config.key, userId, id, record);
-      } else {
-        addRecord(config.key, userId, record);
-      }
-      setRows(getPrivateData(config.key, userId));
+    if (moduleConfig.source === "private") {
+      if (id) updateRecord(moduleConfig.key, userId, id, record);
+      else addRecord(moduleConfig.key, userId, record);
+      setRows(getPrivateData(moduleConfig.key, userId));
     } else if (id) {
-      const next = await updatePublicRow(config, id, record);
+      const next = await updatePublicRow(moduleConfig, id, record);
       setRows((current) => current.map((row) => (String(row.id) === id ? next : row)));
     } else {
-      const next = await createPublicRow(config, record);
+      const next = await createPublicRow(moduleConfig, record);
       setRows((current) => [...current, next]);
     }
 
@@ -108,14 +156,14 @@ export default function ModulePage({ moduleKey }: { moduleKey: ModuleKey }) {
   }
 
   async function removeRecord(row: OpsRecord) {
-    if (!config || !confirm("למחוק את הרשומה?")) return;
+    if (!confirm("למחוק את הרשומה?")) return;
     const id = String(row.id ?? "");
 
-    if (config.source === "private") {
-      deleteRecord(config.key, userId, id);
-      setRows(getPrivateData(config.key, userId));
+    if (moduleConfig.source === "private") {
+      deleteRecord(moduleConfig.key, userId, id);
+      setRows(getPrivateData(moduleConfig.key, userId));
     } else {
-      await deletePublicRow(config, id);
+      await deletePublicRow(moduleConfig, id);
       setRows((current) => current.filter((item) => String(item.id) !== id));
     }
   }
@@ -128,43 +176,82 @@ export default function ModulePage({ moduleKey }: { moduleKey: ModuleKey }) {
     window.location.href = `mailto:${encodeURIComponent(String(value ?? ""))}`;
   }
 
-  const actions = (row: OpsRecord, index: number) => (
-    <div style={{ display: "inline-flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-      {moduleKey === "email_templates" && (
-        <>
-          <Action icon={<Eye size={15} />} label="פתח" onClick={() => setTemplate(row)} />
-          <Action icon={<Send size={15} />} label="שלח" primary onClick={() => setSendTemplate(row)} />
-          <Action icon={<Copy size={15} />} label="העתק" onClick={() => copy(decodeTemplateText(row.body))} />
-        </>
-      )}
-      {moduleKey !== "email_templates" && row.email && <Action icon={<Copy size={15} />} label="העתק" onClick={() => copy(row.email)} />}
-      {moduleKey === "operational_emails" && <Action icon={<Send size={15} />} label="שלח" primary onClick={() => mailto(row.email)} />}
-      {moduleKey === "passwords" && (
-        <>
-          <Action icon={visiblePasswords.has(String(row.id ?? index)) ? <EyeOff size={15} /> : <Eye size={15} />} label="סיסמה" onClick={() => setVisiblePasswords((current) => toggleSet(current, String(row.id ?? index)))} />
-          <Action icon={<Copy size={15} />} label="משתמש" onClick={() => copy(row.username)} />
-          <Action icon={<Copy size={15} />} label="סיסמה" onClick={() => copy(row.password)} />
-        </>
-      )}
-      {moduleKey === "links" && <Action icon={<ExternalLink size={15} />} label="פתח" onClick={() => window.open(String(row.url ?? ""), "_blank")} />}
-      {moduleKey === "agent_numbers" && <Action icon={<Copy size={15} />} label="מספר" onClick={() => copy(row.agent_number)} />}
-      {moduleKey === "institution_codes" && <Action icon={<Copy size={15} />} label="קוד" onClick={() => copy(row.code)} />}
-      {moduleKey === "bank_numbers" && <Action icon={<Copy size={15} />} label="העתק" onClick={() => copy(row.bank_number)} />}
-      {moduleKey === "management_fees" && <Action icon={<Copy size={15} />} label="Copy row" onClick={() => copy(rowText(row))} />}
-      <Action icon={<Edit2 size={15} />} label="ערוך" onClick={() => setEditing(row)} />
-      <Action icon={<Trash2 size={15} />} label="מחק" danger onClick={() => removeRecord(row)} />
-    </div>
-  );
+  const actions = (row: OpsRecord, index: number) => {
+    const rowKey = String(row.id ?? index);
+
+    if (moduleKey === "operational_emails") {
+      return (
+        <RowActions
+          rowKey={rowKey}
+          open={openActionMenu === rowKey}
+          onToggle={() => setOpenActionMenu((current) => current === rowKey ? null : rowKey)}
+          onSend={() => mailto(row.email)}
+          onCopy={() => copy(row.email)}
+          onEdit={() => setEditing(row)}
+          onDelete={() => removeRecord(row)}
+        />
+      );
+    }
+
+    return (
+      <div style={{ display: "inline-flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+        {moduleKey === "email_templates" && (
+          <>
+            <Action icon={<Eye size={15} />} label="פתח" onClick={() => setTemplate(row)} />
+            <Action icon={<Send size={15} />} label="שלח" primary onClick={() => setSendTemplate(row)} />
+            <Action icon={<Copy size={15} />} label="העתק" onClick={() => copy(decodeTemplateText(row.body))} />
+          </>
+        )}
+        {moduleKey !== "email_templates" && row.email && <Action icon={<Copy size={15} />} label="העתק" onClick={() => copy(row.email)} />}
+        {moduleKey === "passwords" && (
+          <>
+            <Action icon={visiblePasswords.has(rowKey) ? <EyeOff size={15} /> : <Eye size={15} />} label="סיסמה" onClick={() => setVisiblePasswords((current) => toggleSet(current, rowKey))} />
+            <Action icon={<Copy size={15} />} label="משתמש" onClick={() => copy(row.username)} />
+            <Action icon={<Copy size={15} />} label="סיסמה" onClick={() => copy(row.password)} />
+          </>
+        )}
+        {moduleKey === "links" && <Action icon={<ExternalLink size={15} />} label="פתח" onClick={() => window.open(String(row.url ?? ""), "_blank")} />}
+        {moduleKey === "agent_numbers" && <Action icon={<Copy size={15} />} label="מספר" onClick={() => copy(row.agent_number)} />}
+        {moduleKey === "institution_codes" && <Action icon={<Copy size={15} />} label="קוד" onClick={() => copy(row.code)} />}
+        {moduleKey === "bank_numbers" && <Action icon={<Copy size={15} />} label="העתק" onClick={() => copy(row.bank_number)} />}
+        {moduleKey === "management_fees" && <Action icon={<Copy size={15} />} label="Copy row" onClick={() => copy(rowText(row))} />}
+        <Action icon={<Edit2 size={15} />} label="ערוך" onClick={() => setEditing(row)} />
+        <Action icon={<Trash2 size={15} />} label="מחק" danger onClick={() => removeRecord(row)} />
+      </div>
+    );
+  };
 
   return (
-    <section>
-      <ModuleToolbar
-        title={config.title}
-        loading={loading}
-        total={filteredRows.length}
-        onAdd={() => setEditing({})}
-        onExport={() => exportToExcel(config.key, filteredRows)}
-      />
+    <section className="ops-page-shell">
+      {moduleKey === "operational_emails" ? (
+        <EmailsHeader
+          title={title}
+          loading={loading}
+          rows={rows}
+          filteredTotal={filteredRows.length}
+          localSearch={localSearch}
+          companyFilter={companyFilter}
+          departmentFilter={departmentFilter}
+          categoryFilter={categoryFilter}
+          companies={emailCompanies}
+          departments={emailDepartments}
+          categories={emailCategories}
+          onLocalSearch={setLocalSearch}
+          onCompany={setCompanyFilter}
+          onDepartment={setDepartmentFilter}
+          onCategory={setCategoryFilter}
+          onAdd={() => setEditing({})}
+          onExport={() => exportToExcel(moduleConfig.key, filteredRows)}
+        />
+      ) : (
+        <ModuleToolbar
+          title={title}
+          loading={loading}
+          total={filteredRows.length}
+          onAdd={() => setEditing({})}
+          onExport={() => exportToExcel(moduleConfig.key, filteredRows)}
+        />
+      )}
 
       {moduleKey === "management_fees" && (
         <FeesSelector
@@ -184,8 +271,8 @@ export default function ModulePage({ moduleKey }: { moduleKey: ModuleKey }) {
         <DataCards
           rows={filteredRows}
           fields={tableFields}
-          titleField={config.tableFields[0] ?? config.fields[0]?.key}
-          badgeField={config.tableFields[1]}
+          titleField={moduleConfig.tableFields[0] ?? moduleConfig.fields[0]?.key}
+          badgeField={moduleConfig.tableFields[1]}
           actions={actions}
         />
       ) : (
@@ -199,8 +286,8 @@ export default function ModulePage({ moduleKey }: { moduleKey: ModuleKey }) {
 
       <RecordModal
         open={Boolean(editing)}
-        title={editing?.id ? `עריכת ${config.label}` : `הוספת ${config.label}`}
-        fields={config.fields}
+        title={editing?.id ? `עריכת ${label}` : `הוספת ${label}`}
+        fields={moduleConfig.fields}
         record={editing ?? {}}
         onClose={() => setEditing(null)}
         onSave={saveRecord}
@@ -210,6 +297,174 @@ export default function ModulePage({ moduleKey }: { moduleKey: ModuleKey }) {
       <EmailSendModal template={sendTemplate} onClose={() => setSendTemplate(null)} />
       <ClientModal client={client} onClose={() => setClient(null)} />
     </section>
+  );
+}
+
+function EmailsHeader({
+  title,
+  loading,
+  rows,
+  filteredTotal,
+  localSearch,
+  companyFilter,
+  departmentFilter,
+  categoryFilter,
+  companies,
+  departments,
+  categories,
+  onLocalSearch,
+  onCompany,
+  onDepartment,
+  onCategory,
+  onAdd,
+  onExport,
+}: {
+  title: string;
+  loading: boolean;
+  rows: OpsRecord[];
+  filteredTotal: number;
+  localSearch: string;
+  companyFilter: string;
+  departmentFilter: string;
+  categoryFilter: string;
+  companies: string[];
+  departments: string[];
+  categories: string[];
+  onLocalSearch: (value: string) => void;
+  onCompany: (value: string) => void;
+  onDepartment: (value: string) => void;
+  onCategory: (value: string) => void;
+  onAdd: () => void;
+  onExport: () => void;
+}) {
+  const frequentEmails = rows.filter((row) => String(row.email ?? "").includes("@")).length;
+
+  return (
+    <>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16 }}>
+        <div>
+          <h1 style={{ margin: 0, color: "var(--text-heading)", fontSize: 32, lineHeight: 1.2, fontWeight: 900 }}>
+            {title}
+          </h1>
+          <p style={{ margin: "8px 0 0", color: "var(--text-muted)", fontSize: 14, fontWeight: 700 }}>
+            {loading ? "טוען נתונים..." : `${filteredTotal} רשומות`}
+          </p>
+        </div>
+      </div>
+
+      <div className="ops-kpi-grid">
+        <KpiCard icon={<Mail size={22} />} title="סך מיילים" note="סך המיילים התפעוליים" value={rows.length} />
+        <KpiCard icon={<Building2 size={22} />} title="חברות" note="חברות ומוסדות" value={companies.length} />
+        <KpiCard icon={<Users size={22} />} title="מחלקות" note="מחלקות פעילות" value={departments.length || categories.length} />
+        <KpiCard icon={<Send size={22} />} title="מיילים נפוצים" note="שמישים לעבודה שוטפת" value={frequentEmails} />
+      </div>
+
+      <div style={{
+        background: "var(--bg-card)",
+        border: "1px solid var(--border-soft)",
+        borderRadius: "var(--radius-card)",
+        boxShadow: "var(--shadow-card)",
+        padding: 16,
+      }}>
+        <div className="ops-filter-grid">
+          <FieldSearch value={localSearch} onChange={onLocalSearch} />
+          <FilterSelect label="חברה" value={companyFilter} values={companies} onChange={onCompany} />
+          <FilterSelect label="מחלקה" value={departmentFilter} values={departments} onChange={onDepartment} />
+          <FilterSelect label="קטגוריה" value={categoryFilter} values={categories} onChange={onCategory} />
+          <button type="button" style={buttonNeutral} onClick={onExport}>
+            <Printer size={16} />
+            Export
+          </button>
+          <button type="button" style={buttonPrimary} onClick={onAdd}>
+            <Plus size={17} />
+            הוסף מייל
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function FieldSearch({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return (
+    <label style={{ display: "grid", gap: 6 }}>
+      <span style={filterLabel}>חיפוש</span>
+      <div style={{ position: "relative" }}>
+        <Mail size={17} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+        <input
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder="חיפוש במיילים, מייל, הערות..."
+          style={{ ...inputStyle, height: 46, paddingRight: 42 }}
+        />
+      </div>
+    </label>
+  );
+}
+
+function FilterSelect({
+  label,
+  value,
+  values,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  values: string[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label style={{ display: "grid", gap: 6 }}>
+      <span style={filterLabel}>{label}</span>
+      <select value={value} onChange={(event) => onChange(event.target.value)} style={{ ...inputStyle, height: 46 }}>
+        <option value="">הכל</option>
+        {values.map((item) => <option key={item} value={item}>{item}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function KpiCard({
+  icon,
+  title,
+  note,
+  value,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  note: string;
+  value: number;
+}) {
+  return (
+    <article style={{
+      background: "var(--bg-card)",
+      border: "1px solid var(--border-soft)",
+      borderRadius: "var(--radius-card)",
+      boxShadow: "var(--shadow-card)",
+      padding: 20,
+      minHeight: 132,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 16,
+    }}>
+      <span style={{
+        width: 56,
+        height: 56,
+        borderRadius: 14,
+        display: "grid",
+        placeItems: "center",
+        background: "var(--accent-light)",
+        color: "var(--accent)",
+      }}>
+        {icon}
+      </span>
+      <div style={{ textAlign: "right" }}>
+        <p style={{ margin: 0, color: "var(--text-heading)", fontSize: 15, fontWeight: 900 }}>{title}</p>
+        <p style={{ margin: "4px 0 18px", color: "var(--text-muted)", fontSize: 12, fontWeight: 700 }}>{note}</p>
+        <strong style={{ color: "var(--text-heading)", fontSize: 30, lineHeight: 1, fontWeight: 900 }}>{value}</strong>
+      </div>
+    </article>
   );
 }
 
@@ -227,18 +482,87 @@ function ModuleToolbar({
   onExport: () => void;
 }) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+    <div style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "flex-end",
+      gap: 16,
+      background: "var(--bg-card)",
+      border: "1px solid var(--border-soft)",
+      borderRadius: "var(--radius-card)",
+      boxShadow: "var(--shadow-card)",
+      padding: 20,
+    }}>
       <div>
-        <h2 style={{ margin: 0, fontSize: 18, color: "var(--text-heading)" }}>{title}</h2>
-        <p style={{ margin: "4px 0 0", color: "var(--text-muted)", fontSize: 13 }}>
+        <h1 style={{ margin: 0, fontSize: 28, color: "var(--text-heading)", fontWeight: 900 }}>{title}</h1>
+        <p style={{ margin: "6px 0 0", color: "var(--text-muted)", fontSize: 14, fontWeight: 700 }}>
           {loading ? "טוען נתונים..." : `${total} רשומות`}
         </p>
       </div>
-      <div style={{ display: "flex", gap: 8 }}>
-        <Action icon={<Plus size={16} />} label="הוסף" primary onClick={onAdd} />
-        <Action icon={<Printer size={16} />} label="Export" onClick={onExport} />
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <button type="button" style={buttonPrimary} onClick={onAdd}><Plus size={17} />הוסף</button>
+        <button type="button" style={buttonNeutral} onClick={onExport}><Printer size={16} />Export</button>
       </div>
     </div>
+  );
+}
+
+function RowActions({
+  rowKey,
+  open,
+  onToggle,
+  onSend,
+  onCopy,
+  onEdit,
+  onDelete,
+}: {
+  rowKey: string;
+  open: boolean;
+  onToggle: () => void;
+  onSend: () => void;
+  onCopy: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 8, position: "relative" }}>
+      <button type="button" style={smallPrimary} onClick={(event) => { event.stopPropagation(); onSend(); }}>
+        <Send size={15} />
+        שלח
+      </button>
+      <button type="button" aria-label={`פעולות ${rowKey}`} style={dotsButton} onClick={(event) => { event.stopPropagation(); onToggle(); }}>
+        <MoreHorizontal size={18} />
+      </button>
+      {open && (
+        <div style={rowMenu}>
+          <MenuAction icon={<Edit2 size={15} />} label="עריכה" onClick={onEdit} />
+          <MenuAction icon={<Copy size={15} />} label="העתקה" onClick={onCopy} />
+          <MenuAction icon={<Trash2 size={15} />} label="מחיקה" danger onClick={onDelete} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MenuAction({ icon, label, onClick, danger }: { icon: React.ReactNode; label: string; onClick: () => void; danger?: boolean }) {
+  return (
+    <button type="button" onClick={(event) => { event.stopPropagation(); onClick(); }} style={{
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      width: "100%",
+      border: 0,
+      background: "transparent",
+      color: danger ? "var(--status-blocked)" : "var(--text-body)",
+      padding: "9px 10px",
+      borderRadius: 9,
+      cursor: "pointer",
+      fontWeight: 800,
+      textAlign: "right",
+    }}>
+      {icon}
+      {label}
+    </button>
   );
 }
 
@@ -302,7 +626,7 @@ function RecordModal({
           };
 
           return (
-            <label key={field.key} style={{ display: "grid", gap: 6, color: "var(--text-heading)", fontSize: 13, fontWeight: 700 }}>
+            <label key={field.key} style={{ display: "grid", gap: 6, color: "var(--text-heading)", fontSize: 13, fontWeight: 800 }}>
               {field.label}
               {field.type === "textarea" ? <textarea {...common} rows={4} /> : <input {...common} type={field.type ?? "text"} />}
             </label>
@@ -356,7 +680,7 @@ function Pills({ values, active, onSelect }: { values: string[]; active: string;
       {values.map((value) => (
         <button key={value} type="button" onClick={() => onSelect(value)} style={{
           ...buttonNeutral,
-          background: normalizeText(value) === normalizeText(active) ? "var(--primary)" : "#fff",
+          background: normalizeText(value) === normalizeText(active) ? "var(--accent)" : "#fff",
           color: normalizeText(value) === normalizeText(active) ? "#fff" : "var(--text-body)",
         }}>
           {value}
@@ -372,8 +696,8 @@ function BankCards({ rows, onCopy }: { rows: OpsRecord[]; onCopy: (value: unknow
       {rows.map((row, index) => (
         <article key={String(row.id ?? index)} style={{
           position: "relative",
-          minHeight: 150,
-          border: "1px solid #DDE7F3",
+          minHeight: 160,
+          border: "1px solid var(--border-soft)",
           borderRadius: "var(--radius-card)",
           background: "var(--bg-card)",
           boxShadow: "var(--shadow-card)",
@@ -381,10 +705,10 @@ function BankCards({ rows, onCopy }: { rows: OpsRecord[]; onCopy: (value: unknow
           placeItems: "center",
           padding: 18,
         }}>
-          <span style={{ position: "absolute", top: 14, right: 16, fontWeight: 800, color: "var(--text-heading)" }}>
+          <span style={{ position: "absolute", top: 14, right: 16, fontWeight: 900, color: "var(--text-heading)" }}>
             {String(row.bank_name ?? "")}
           </span>
-          <strong style={{ fontSize: 44, color: "var(--primary)", lineHeight: 1 }}>{String(row.bank_number ?? "")}</strong>
+          <strong style={{ fontSize: 48, color: "var(--accent)", lineHeight: 1 }}>{String(row.bank_number ?? "")}</strong>
           <button type="button" onClick={() => onCopy(row.bank_number)} style={{ ...buttonNeutral, position: "absolute", bottom: 12, left: 12 }}>
             העתק
           </button>
@@ -409,17 +733,16 @@ function Action({
 }) {
   return (
     <button type="button" onClick={(event) => { event.stopPropagation(); onClick(); }} style={{
-      border: `1px solid ${danger ? "#FECACA" : "#D8E4F2"}`,
+      border: `1px solid ${danger ? "#FECACA" : "var(--border-soft)"}`,
       background: primary ? "var(--accent)" : danger ? "#FFF1F2" : "#fff",
       color: primary ? "#fff" : danger ? "var(--status-blocked)" : "var(--primary)",
-      borderRadius: 9,
-      padding: "7px 9px",
+      borderRadius: 10,
+      padding: "7px 10px",
       display: "inline-flex",
       alignItems: "center",
       gap: 5,
       fontSize: 12,
       fontWeight: 800,
-      fontFamily: "var(--font-main)",
       cursor: "pointer",
     }}>
       {icon}
@@ -439,6 +762,10 @@ function maskRow(row: OpsRecord, moduleKey: ModuleKey, showPassword: boolean) {
     };
   }
   return row;
+}
+
+function matchesFilter(value: unknown, filter: string) {
+  return !filter || normalizeText(String(value ?? "")) === normalizeText(filter);
 }
 
 function unique(values: string[]) {
@@ -462,41 +789,86 @@ function rowText(row: OpsRecord) {
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "11px 13px",
-  borderRadius: 10,
-  border: "1px solid #CBD5E1",
-  background: "#F8FAFC",
+  borderRadius: 12,
+  border: "1px solid var(--border-soft)",
+  background: "#fff",
   color: "var(--text-body)",
-  fontFamily: "var(--font-main)",
   outline: "none",
+  boxShadow: "0 1px 0 rgba(16,33,63,0.02)",
+};
+
+const filterLabel: React.CSSProperties = {
+  color: "var(--text-muted)",
+  fontSize: 12,
+  fontWeight: 800,
 };
 
 const buttonPrimary: React.CSSProperties = {
   border: 0,
-  borderRadius: 10,
-  padding: "10px 18px",
+  borderRadius: 12,
+  padding: "11px 18px",
   background: "var(--accent)",
   color: "#fff",
-  fontFamily: "var(--font-main)",
-  fontWeight: 800,
+  fontWeight: 900,
   cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  whiteSpace: "nowrap",
 };
 
 const buttonNeutral: React.CSSProperties = {
-  border: "1px solid #D8E4F2",
-  borderRadius: 10,
-  padding: "9px 13px",
+  border: "1px solid var(--border-soft)",
+  borderRadius: 12,
+  padding: "10px 15px",
   background: "#fff",
-  color: "var(--text-body)",
-  fontFamily: "var(--font-main)",
-  fontWeight: 800,
+  color: "var(--primary)",
+  fontWeight: 900,
   cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  whiteSpace: "nowrap",
+};
+
+const smallPrimary: React.CSSProperties = {
+  ...buttonPrimary,
+  padding: "8px 13px",
+  borderRadius: 10,
+  fontSize: 13,
+};
+
+const dotsButton: React.CSSProperties = {
+  width: 36,
+  height: 36,
+  borderRadius: 10,
+  border: "1px solid var(--border-soft)",
+  background: "#fff",
+  color: "var(--primary)",
+  display: "inline-grid",
+  placeItems: "center",
+  cursor: "pointer",
+};
+
+const rowMenu: React.CSSProperties = {
+  position: "absolute",
+  top: 42,
+  left: 0,
+  width: 140,
+  background: "#fff",
+  border: "1px solid var(--border-soft)",
+  borderRadius: 12,
+  boxShadow: "var(--shadow-hover)",
+  padding: 6,
+  zIndex: 10,
 };
 
 const panelStyle: React.CSSProperties = {
   background: "var(--bg-card)",
-  border: "1px solid #DDE7F3",
+  border: "1px solid var(--border-soft)",
   borderRadius: "var(--radius-card)",
   boxShadow: "var(--shadow-card)",
-  padding: 14,
-  marginBottom: 16,
+  padding: 16,
 };

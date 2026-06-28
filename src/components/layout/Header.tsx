@@ -25,26 +25,16 @@ export default function Header() {
 
   return (
     <header style={{
-      height: 56,
       display: "flex",
       alignItems: "center",
+      justifyContent: "flex-end",
       gap: 12,
-      marginBottom: 18,
+      marginBottom: 22,
     }}>
-      <h1 style={{
-        minWidth: 180,
-        margin: 0,
-        color: "var(--text-heading)",
-        fontSize: 20,
-        fontWeight: 800,
-      }}>
-        {activeConfig?.title ?? "מרכז תפעול"}
-      </h1>
-
       <SearchBar
         value={searchQuery}
         onChange={setSearchQuery}
-        placeholder={isGlobalSearch ? "חיפוש בכל המערכת..." : "חיפוש בטאב הנוכחי..."}
+        placeholder={isGlobalSearch ? "חיפוש בכל המערכת..." : `חיפוש ${activeConfig ? `ב${activeConfig.label}` : "בטאב הנוכחי"}...`}
       />
 
       <Segmented
@@ -66,19 +56,19 @@ export default function Header() {
       />
 
       <div style={{ position: "relative" }}>
-        <button type="button" onClick={() => setOpen((value) => !value)} style={iconButton}>
+        <button type="button" onClick={() => setOpen((value) => !value)} style={iconButton} aria-label="הגדרות">
           <Settings size={18} />
         </button>
         {open && (
           <div style={{
             position: "absolute",
-            top: 48,
+            top: 52,
             left: 0,
-            width: 230,
+            width: 240,
             background: "var(--bg-card)",
-            border: "1px solid #DDE7F3",
+            border: "1px solid var(--border-soft)",
             boxShadow: "var(--shadow-hover)",
-            borderRadius: 14,
+            borderRadius: 16,
             padding: 8,
             zIndex: 20,
           }}>
@@ -108,9 +98,9 @@ function Segmented({
     <div style={{
       display: "flex",
       background: "var(--bg-card)",
-      border: "1px solid #DDE7F3",
-      borderRadius: 12,
-      padding: 3,
+      border: "1px solid var(--border-soft)",
+      borderRadius: 14,
+      padding: 4,
       boxShadow: "var(--shadow-card)",
       whiteSpace: "nowrap",
     }}>
@@ -121,12 +111,12 @@ function Segmented({
           onClick={() => onChange(key)}
           style={{
             border: 0,
-            borderRadius: 9,
-            padding: "7px 11px",
+            borderRadius: 10,
+            padding: "8px 13px",
             background: value === key ? "var(--accent)" : "transparent",
             color: value === key ? "#fff" : "var(--text-muted)",
             fontFamily: "var(--font-main)",
-            fontWeight: 700,
+            fontWeight: 800,
             cursor: "pointer",
           }}
         >
@@ -160,6 +150,7 @@ function MenuButton({
       cursor: "pointer",
       fontFamily: "var(--font-main)",
       textAlign: "right",
+      fontWeight: 700,
     }}>
       {icon}
       {label}
@@ -168,10 +159,10 @@ function MenuButton({
 }
 
 const iconButton: React.CSSProperties = {
-  width: 42,
-  height: 42,
-  borderRadius: 12,
-  border: "1px solid #DDE7F3",
+  width: 46,
+  height: 46,
+  borderRadius: 14,
+  border: "1px solid var(--border-soft)",
   background: "var(--bg-card)",
   boxShadow: "var(--shadow-card)",
   color: "var(--text-body)",
