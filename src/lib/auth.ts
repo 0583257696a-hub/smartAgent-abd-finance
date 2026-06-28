@@ -62,7 +62,15 @@ export async function signIn(email: string, password: string) {
   if (user.status === "blocked") throw new Error("User blocked");
 
   if (canUseLocalStorage()) {
-    const { password: _password, ...profile } = user;
+    const profile: LocalProfile = {
+      id: user.id,
+      email: user.email,
+      full_name: user.full_name,
+      agency_name: user.agency_name,
+      phone: user.phone,
+      role: user.role,
+      status: user.status,
+    };
     window.localStorage.setItem(sessionKey, JSON.stringify(profile));
   }
 
