@@ -7,16 +7,12 @@
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
-  }
-  /*
-  After creating a Cloudflare D1 database, enable shared cloud data by adding:
-
-  ,"d1_databases": [
+  },
+  "d1_databases": [
     {
       "binding": "OPS_DB",
-      "database_name": "smart-agent-abd-finance-db",
-      "database_id": "PASTE_DATABASE_ID_HERE"
+      "database_name": "smart-agent",
+      "database_id": "973d4cce-1c66-4b73-853a-892d9f4883e0"
     }
   ]
-  */
 }

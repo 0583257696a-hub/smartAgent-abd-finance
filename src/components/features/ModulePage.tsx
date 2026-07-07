@@ -8,10 +8,13 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
+  Hash,
   Mail,
+  MapPin,
   MoreHorizontal,
   Plus,
   Printer,
+  Search,
   Send,
   Trash2,
   Users,
@@ -266,7 +269,7 @@ export default function ModulePage({ moduleKey }: { moduleKey: ModuleKey }) {
       {moduleKey === "insurance_discounts" && <DiscountFilters rows={rows} />}
 
       {moduleKey === "bank_numbers" ? (
-        <BankCards rows={filteredRows} onCopy={copy} />
+        <BankCardsWithBranches rows={filteredRows} onCopy={copy} />
       ) : displayAsCards ? (
         <DataCards
           rows={filteredRows}
@@ -718,6 +721,232 @@ function BankCards({ rows, onCopy }: { rows: OpsRecord[]; onCopy: (value: unknow
   );
 }
 
+type BankBranch = {
+  bankName: string;
+  bankNumber: string;
+  branchName: string;
+  branchNumber: string;
+  address: string;
+  city: string;
+  phone: string;
+  type: string;
+};
+
+function BankCardsWithBranches({ rows, onCopy }: { rows: OpsRecord[]; onCopy: (value: unknown) => void }) {
+  const [branches, setBranches] = useState<BankBranch[]>([]);
+  const [branchSearch, setBranchSearch] = useState("");
+  const [branchBank, setBranchBank] = useState("");
+  const [branchPage, setBranchPage] = useState(1);
+  const rowsPerPage = 18;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadBranches() {
+      try {
+        const response = await fetch("/data/snifim.json");
+        if (!response.ok) throw new Error("Failed to load snifim.json");
+        const raw = (await response.json()) as Record<string, unknown>[];
+        const mapped = raw.map(mapBankBranch).filter((branch) => branch.bankName || branch.branchName || branch.branchNumber);
+        if (!cancelled) setBranches(mapped);
+      } catch (error) {
+        console.error("Failed to load bank branches", error);
+        if (!cancelled) setBranches([]);
+      }
+    }
+
+    void loadBranches();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    setBranchPage(1);
+  }, [branchSearch, branchBank]);
+
+  const bankOptions = useMemo(
+    () => unique(branches.map((branch) => branch.bankName)).sort((a, b) => a.localeCompare(b, "he")),
+    [branches]
+  );
+
+  const filteredBranches = useMemo(() => {
+    return branches.filter((branch) => {
+      const matchesBank = !branchBank || normalizeText(branch.bankName) === normalizeText(branchBank);
+      const searchableText = [
+        branch.bankName,
+        branch.bankNumber,
+        branch.branchName,
+        branch.branchNumber,
+        branch.address,
+        branch.city,
+        branch.phone,
+        branch.type,
+      ].join(" ");
+      return matchesBank && searchMatch(searchableText, branchSearch);
+    });
+  }, [branchBank, branchSearch, branches]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredBranches.length / rowsPerPage));
+  const safePage = Math.min(branchPage, totalPages);
+  const visibleBranches = filteredBranches.slice((safePage - 1) * rowsPerPage, safePage * rowsPerPage);
+
+  return (
+    <div style={{ display: "grid", gap: 18 }}>
+      <BankCards rows={rows} onCopy={onCopy} />
+
+      <section style={{
+        background: "var(--bg-card)",
+        border: "1px solid var(--border-soft)",
+        borderRadius: "var(--radius-card)",
+        boxShadow: "var(--shadow-card)",
+        overflow: "hidden",
+      }}>
+        <div style={{
+          padding: 18,
+          display: "grid",
+          gridTemplateColumns: "minmax(220px,1fr) minmax(180px,620px)",
+          gap: 12,
+          alignItems: "end",
+          borderBottom: "1px solid var(--border-soft)",
+        }}>
+          <div>
+            <h2 style={{ margin: 0, color: "var(--text-heading)", fontSize: 22, fontWeight: 900 }}>
+              סניפי בנקים בישראל
+            </h2>
+            <p style={{ margin: "5px 0 0", color: "var(--text-muted)", fontSize: 13, fontWeight: 700 }}>
+              {filteredBranches.length} מתוך {branches.length} סניפים
+            </p>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 180px", gap: 10 }}>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={filterLabel}>חיפוש סניף</span>
+              <div style={{ position: "relative" }}>
+                <Search size={17} style={{ position: "absolute", right: 13, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+                <input
+                  value={branchSearch}
+                  onChange={(event) => setBranchSearch(event.target.value)}
+                  placeholder="בנק / סניף / עיר / כתובת..."
+                  style={{ ...inputStyle, height: 44, paddingRight: 40 }}
+                />
+              </div>
+            </label>
+            <FilterSelect label="בנק" value={branchBank} values={bankOptions} onChange={setBranchBank} />
+          </div>
+        </div>
+
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: 860 }}>
+            <thead>
+              <tr>
+                {["בנק", "מספר בנק", "סניף", "מספר סניף", "עיר", "כתובת", "טלפון", "פעולות"].map((header) => (
+                  <th key={header} style={branchTh}>{header}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {visibleBranches.map((branch, index) => (
+                <tr key={`${branch.bankNumber}-${branch.branchNumber}-${index}`} style={{ background: index % 2 === 0 ? "#fff" : "#F8FAFC" }}>
+                  <td style={branchTd}>
+                    <strong style={{ color: "var(--text-heading)" }}>{branch.bankName}</strong>
+                    {branch.type && <span style={{ display: "block", marginTop: 2, color: "var(--text-muted)", fontSize: 12 }}>{branch.type}</span>}
+                  </td>
+                  <td style={branchTd}><MiniValue icon={<Hash size={13} />} value={branch.bankNumber} /></td>
+                  <td style={branchTd}>{branch.branchName}</td>
+                  <td style={branchTd}><MiniValue icon={<Hash size={13} />} value={branch.branchNumber} /></td>
+                  <td style={branchTd}><MiniValue icon={<MapPin size={13} />} value={branch.city} /></td>
+                  <td style={branchTd}>{branch.address || "-"}</td>
+                  <td style={branchTd}>{branch.phone || "-"}</td>
+                  <td style={branchTd}>
+                    <div style={{ display: "inline-flex", gap: 6, flexWrap: "wrap" }}>
+                      <button type="button" style={iconOnlyButton} title="העתק מספר סניף" onClick={() => onCopy(branch.branchNumber)}>
+                        <Copy size={15} />
+                      </button>
+                      <button type="button" style={iconOnlyButton} title="העתק פרטי סניף" onClick={() => onCopy(branchText(branch))}>
+                        <Copy size={15} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {!visibleBranches.length && (
+                <tr>
+                  <td colSpan={8} style={{ ...branchTd, textAlign: "center", color: "var(--text-muted)", padding: 28 }}>
+                    לא נמצאו סניפים תואמים
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 12,
+          padding: "12px 16px",
+          borderTop: "1px solid var(--border-soft)",
+          color: "var(--text-muted)",
+          fontSize: 13,
+          fontWeight: 800,
+        }}>
+          <span>עמוד {safePage} מתוך {totalPages}</span>
+          <div style={{ display: "inline-flex", gap: 8 }}>
+            <button type="button" style={buttonNeutral} disabled={safePage <= 1} onClick={() => setBranchPage((page) => Math.max(1, page - 1))}>
+              קודם
+            </button>
+            <button type="button" style={buttonNeutral} disabled={safePage >= totalPages} onClick={() => setBranchPage((page) => Math.min(totalPages, page + 1))}>
+              הבא
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function mapBankBranch(raw: Record<string, unknown>): BankBranch {
+  return {
+    bankName: readValue(raw, ["bank_name", "שם הבנק"]),
+    bankNumber: readValue(raw, ["bank_number", "קוד הבנק"]),
+    branchName: readValue(raw, ["branch_name", "שם הסניף"]),
+    branchNumber: readValue(raw, ["branch_number", "קוד הסניף"]),
+    address: readValue(raw, ["address", "כתובת"]),
+    city: readValue(raw, ["city", "עיר"]),
+    phone: readValue(raw, ["phone", "טלפון"]),
+    type: readValue(raw, ["type", "סוג הסניף"]),
+  };
+}
+
+function readValue(raw: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = raw[key];
+    if (value !== null && value !== undefined && String(value).trim()) return String(value).trim();
+  }
+  return "";
+}
+
+function MiniValue({ icon, value }: { icon: React.ReactNode; value: string }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "var(--primary)", fontWeight: 900 }}>
+      {icon}
+      {value || "-"}
+    </span>
+  );
+}
+
+function branchText(branch: BankBranch) {
+  return [
+    branch.bankName,
+    `מספר בנק: ${branch.bankNumber}`,
+    `${branch.branchName} ${branch.branchNumber}`.trim(),
+    branch.city,
+    branch.address,
+    branch.phone,
+  ].filter(Boolean).join(" | ");
+}
+
 function Action({
   icon,
   label,
@@ -863,6 +1092,41 @@ const rowMenu: React.CSSProperties = {
   boxShadow: "var(--shadow-hover)",
   padding: 6,
   zIndex: 10,
+};
+
+const branchTh: React.CSSProperties = {
+  position: "sticky",
+  top: 0,
+  background: "#F8FAFC",
+  color: "var(--text-heading)",
+  borderBottom: "1px solid var(--border-soft)",
+  padding: "12px 14px",
+  textAlign: "right",
+  fontSize: 12,
+  fontWeight: 900,
+  whiteSpace: "nowrap",
+  zIndex: 1,
+};
+
+const branchTd: React.CSSProperties = {
+  borderBottom: "1px solid var(--border-soft)",
+  padding: "12px 14px",
+  color: "var(--text-body)",
+  fontSize: 13,
+  fontWeight: 700,
+  verticalAlign: "middle",
+};
+
+const iconOnlyButton: React.CSSProperties = {
+  width: 34,
+  height: 34,
+  borderRadius: 10,
+  border: "1px solid var(--border-soft)",
+  background: "#fff",
+  color: "var(--primary)",
+  display: "inline-grid",
+  placeItems: "center",
+  cursor: "pointer",
 };
 
 const panelStyle: React.CSSProperties = {
