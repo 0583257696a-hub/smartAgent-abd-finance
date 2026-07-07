@@ -269,7 +269,7 @@ export default function ModulePage({ moduleKey }: { moduleKey: ModuleKey }) {
       {moduleKey === "insurance_discounts" && <DiscountFilters rows={rows} />}
 
       {moduleKey === "bank_numbers" ? (
-        <BankCardsWithBranches rows={filteredRows} onCopy={copy} />
+        <BankCardsBranchModal rows={filteredRows} onCopy={copy} />
       ) : displayAsCards ? (
         <DataCards
           rows={filteredRows}
@@ -732,6 +732,8 @@ type BankBranch = {
   type: string;
 };
 
+// Kept only as a compatibility fallback while the active bank UI uses BankCardsBranchModal.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function BankCardsWithBranches({ rows, onCopy }: { rows: OpsRecord[]; onCopy: (value: unknown) => void }) {
   const [branches, setBranches] = useState<BankBranch[]>([]);
   const [branchSearch, setBranchSearch] = useState("");
@@ -945,6 +947,194 @@ function branchText(branch: BankBranch) {
     branch.address,
     branch.phone,
   ].filter(Boolean).join(" | ");
+}
+
+function BankCardsBranchModal({ rows, onCopy }: { rows: OpsRecord[]; onCopy: (value: unknown) => void }) {
+  const [branches, setBranches] = useState<BankBranch[]>([]);
+  const [selectedBank, setSelectedBank] = useState<OpsRecord | null>(null);
+  const [modalSearch, setModalSearch] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadBranches() {
+      try {
+        const response = await fetch("/data/snifim.json");
+        if (!response.ok) throw new Error("Failed to load snifim.json");
+        const raw = (await response.json()) as Record<string, unknown>[];
+        const mapped = raw.map(mapBankBranch).filter((branch) => branch.bankName || branch.branchName || branch.branchNumber);
+        if (!cancelled) setBranches(mapped);
+      } catch (error) {
+        console.error("Failed to load bank branches", error);
+        if (!cancelled) setBranches([]);
+      }
+    }
+
+    void loadBranches();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    setModalSearch("");
+  }, [selectedBank]);
+
+  const selectedBankNumber = String(selectedBank?.bank_number ?? "");
+  const selectedBankName = String(selectedBank?.bank_name ?? "");
+
+  const selectedBranches = useMemo(() => {
+    return branches.filter((branch) => {
+      const sameBank =
+        normalizeText(branch.bankNumber) === normalizeText(selectedBankNumber) ||
+        normalizeText(branch.bankName) === normalizeText(selectedBankName);
+      const searchableText = [
+        branch.branchName,
+        branch.branchNumber,
+        branch.city,
+        branch.address,
+        branch.phone,
+        branch.type,
+      ].join(" ");
+      return sameBank && searchMatch(searchableText, modalSearch);
+    });
+  }, [branches, modalSearch, selectedBankName, selectedBankNumber]);
+
+  function branchCount(row: OpsRecord) {
+    const bankNumber = String(row.bank_number ?? "");
+    const bankName = String(row.bank_name ?? "");
+    return branches.filter((branch) =>
+      normalizeText(branch.bankNumber) === normalizeText(bankNumber) ||
+      normalizeText(branch.bankName) === normalizeText(bankName)
+    ).length;
+  }
+
+  return (
+    <>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 16 }}>
+        {rows.map((row, index) => (
+          <article key={String(row.id ?? index)} style={{
+            position: "relative",
+            minHeight: 190,
+            border: "1px solid var(--border-soft)",
+            borderRadius: "var(--radius-card)",
+            background: "var(--bg-card)",
+            boxShadow: "var(--shadow-card)",
+            display: "grid",
+            gridTemplateRows: "1fr auto",
+            gap: 14,
+            padding: 18,
+          }}>
+            <span style={{ fontWeight: 900, color: "var(--text-heading)", textAlign: "right", alignSelf: "start" }}>
+              {String(row.bank_name ?? "")}
+            </span>
+
+            <div style={{ display: "grid", placeItems: "center", minHeight: 76 }}>
+              <strong style={{ fontSize: 52, color: "var(--accent)", lineHeight: 1 }}>
+                {String(row.bank_number ?? "")}
+              </strong>
+            </div>
+
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "1fr auto",
+              gap: 8,
+              alignItems: "center",
+            }}>
+              <button
+                type="button"
+                onClick={() => setSelectedBank(row)}
+                style={{
+                  ...buttonNeutral,
+                  justifyContent: "space-between",
+                  padding: "10px 12px",
+                  background: "var(--accent-light)",
+                  color: "var(--accent)",
+                }}
+              >
+                <span>סניפים</span>
+                <span style={{
+                  minWidth: 28,
+                  height: 22,
+                  borderRadius: 999,
+                  display: "inline-grid",
+                  placeItems: "center",
+                  background: "#fff",
+                  color: "var(--primary)",
+                  fontSize: 12,
+                }}>
+                  {branchCount(row)}
+                </span>
+              </button>
+              <button type="button" onClick={() => onCopy(row.bank_number)} style={{ ...iconOnlyButton, width: 42, height: 42 }} title="העתק מספר בנק">
+                <Copy size={16} />
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <Modal
+        open={Boolean(selectedBank)}
+        title={`סניפי ${selectedBankName}`}
+        subtitle={`${selectedBranches.length} סניפים נמצאו`}
+        onClose={() => setSelectedBank(null)}
+      >
+        <div style={{ display: "grid", gap: 14 }}>
+          <div style={{ position: "relative" }}>
+            <Search size={18} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+            <input
+              value={modalSearch}
+              onChange={(event) => setModalSearch(event.target.value)}
+              placeholder="חיפוש מספר סניף / שם סניף / עיר / כתובת..."
+              style={{ ...inputStyle, height: 48, paddingRight: 44 }}
+              autoFocus
+            />
+          </div>
+
+          <div style={{ maxHeight: "min(58vh, 560px)", overflow: "auto", border: "1px solid var(--border-soft)", borderRadius: 14 }}>
+            <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: 760 }}>
+              <thead>
+                <tr>
+                  {["מספר סניף", "שם סניף", "עיר", "כתובת", "טלפון", "פעולות"].map((header) => (
+                    <th key={header} style={branchTh}>{header}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {selectedBranches.map((branch, index) => (
+                  <tr key={`${branch.bankNumber}-${branch.branchNumber}-${index}`} style={{ background: index % 2 === 0 ? "#fff" : "#F8FAFC" }}>
+                    <td style={branchTd}><MiniValue icon={<Hash size={13} />} value={branch.branchNumber} /></td>
+                    <td style={branchTd}>{branch.branchName}</td>
+                    <td style={branchTd}><MiniValue icon={<MapPin size={13} />} value={branch.city} /></td>
+                    <td style={branchTd}>{branch.address || "-"}</td>
+                    <td style={branchTd}>{branch.phone || "-"}</td>
+                    <td style={branchTd}>
+                      <div style={{ display: "inline-flex", gap: 6 }}>
+                        <button type="button" style={iconOnlyButton} title="העתק מספר סניף" onClick={() => onCopy(branch.branchNumber)}>
+                          <Copy size={15} />
+                        </button>
+                        <button type="button" style={iconOnlyButton} title="העתק פרטי סניף" onClick={() => onCopy(branchText(branch))}>
+                          <Copy size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {!selectedBranches.length && (
+                  <tr>
+                    <td colSpan={6} style={{ ...branchTd, textAlign: "center", color: "var(--text-muted)", padding: 28 }}>
+                      לא נמצאו סניפים תואמים
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Modal>
+    </>
+  );
 }
 
 function Action({
