@@ -130,6 +130,21 @@ export default function Sidebar() {
         padding: '14px 10px',
         borderTop: '1px solid var(--border-subtle)'
       }}>
+        <Link href="/admin" style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '10px 12px',
+          borderRadius: 12,
+          color: pathname === '/admin' ? 'var(--accent)' : 'var(--text-sidebar)',
+          background: pathname === '/admin' ? 'var(--bg-sidebar-active)' : 'transparent',
+          textDecoration: 'none',
+          fontSize: 14,
+          fontWeight: 700
+        }}>
+          <ShieldCheck size={16} strokeWidth={1.6} />
+          פאנל ניהול
+        </Link>
         <Link href="/settings" style={{
           display: 'flex',
           alignItems: 'center',

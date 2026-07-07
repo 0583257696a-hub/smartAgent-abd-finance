@@ -51,6 +51,20 @@ function writeUsers(users: Array<LocalProfile & { password: string }>) {
 }
 
 export async function signIn(email: string, password: string) {
+  try {
+    const response = await fetch("/api/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "login", email, password }),
+    });
+    if (!response.ok) throw new Error("Invalid credentials");
+    const data = await response.json() as { user: LocalProfile };
+    if (canUseLocalStorage()) window.localStorage.setItem(sessionKey, JSON.stringify(data.user));
+    return data;
+  } catch (error) {
+    console.warn("D1 login unavailable, using local fallback", error);
+  }
+
   const users = readUsers();
   const user = users.find(
     (candidate) =>
@@ -85,6 +99,18 @@ export async function signUp(payload: {
   phone: string;
   notes?: string;
 }) {
+  try {
+    const response = await fetch("/api/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "register", ...payload }),
+    });
+    if (!response.ok) throw new Error("Registration failed");
+    return await response.json();
+  } catch (error) {
+    console.warn("D1 registration unavailable, using local fallback", error);
+  }
+
   const users = readUsers();
   if (users.some((user) => user.email.toLowerCase() === payload.email.toLowerCase())) {
     throw new Error("User already exists");

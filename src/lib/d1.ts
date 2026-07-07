@@ -1,5 +1,5 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { getValue, moduleByKey, type ModuleConfig, type ModuleKey, type OpsRecord } from "@/lib/modules";
+import { getValue, moduleByKey, modules, type ModuleConfig, type ModuleKey, type OpsRecord } from "@/lib/modules";
 
 type OpsCloudflareEnv = CloudflareEnv & {
   OPS_DB?: D1Database;
@@ -19,6 +19,74 @@ export async function getOpsDb() {
   } catch {
     return null;
   }
+}
+
+export async function ensureAdminSchema(db: D1Database) {
+  await db
+    .prepare(
+      `create table if not exists ops_users (
+        id text primary key,
+        email text not null unique,
+        password text not null,
+        full_name text not null,
+        agency_name text not null,
+        phone text not null,
+        notes text,
+        role text not null default 'agent',
+        status text not null default 'pending',
+        permissions text not null default '{}',
+        created_at text not null default current_timestamp,
+        updated_at text not null default current_timestamp
+      )`,
+    )
+    .run();
+
+  await db
+    .prepare(
+      `create table if not exists ops_audit_log (
+        id text primary key,
+        actor_id text,
+        action text not null,
+        target_id text,
+        details text,
+        created_at text not null default current_timestamp
+      )`,
+    )
+    .run();
+
+  const admin = await db
+    .prepare("select id from ops_users where email = ?")
+    .bind("admin@insurance-ops.co.il")
+    .first<{ id: string }>();
+
+  if (!admin) {
+    await db
+      .prepare(
+        `insert into ops_users (
+          id, email, password, full_name, agency_name, phone, role, status, permissions
+        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        "local-admin",
+        "admin@insurance-ops.co.il",
+        "Admin123456!",
+        "מנהל המערכת",
+        "מרכז תפעול",
+        "050-0000000",
+        "super_admin",
+        "approved",
+        JSON.stringify(allPermissions(true)),
+      )
+      .run();
+  }
+}
+
+export async function writeAuditLog(db: D1Database, actorId: string | null, action: string, targetId?: string, details?: unknown) {
+  await ensureAdminSchema(db);
+  await db
+    .prepare("insert into ops_audit_log (id, actor_id, action, target_id, details) values (?, ?, ?, ?, ?)")
+    .bind(recordId(), actorId, action, targetId ?? null, details ? JSON.stringify(details) : null)
+    .run();
 }
 
 export async function listD1Rows(config: ModuleConfig, request: Request) {
@@ -224,6 +292,22 @@ const dedupFields: Partial<Record<ModuleKey, string[]>> = {
   institution_codes: ["company", "type", "code"],
   bank_numbers: ["bank_number"],
 };
+
+function allPermissions(enabled: boolean) {
+  return Object.fromEntries(
+    modules.map((module) => [
+      module.key,
+      {
+        view: enabled,
+        create: enabled,
+        edit: enabled,
+        delete: enabled,
+        import: enabled,
+        export: enabled,
+      },
+    ]),
+  );
+}
 
 export function resolvePublicConfig(moduleKey: string) {
   const config = moduleByKey(moduleKey as ModuleKey);
